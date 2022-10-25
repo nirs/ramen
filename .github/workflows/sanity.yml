@@ -39,7 +39,7 @@ jobs:
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip ruby
           sudo gem install mdl
-          sudo pip3 install yamllint
+          sudo pip3 install yamllint reuse
 
       - name: Run linters
         run: ./hack/pre-commit.sh

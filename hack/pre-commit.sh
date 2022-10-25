@@ -48,4 +48,9 @@ run_check '.*\.(ba)?sh' shellcheck
 # Install via: dnf install yamllint
 run_check '.*\.ya?ml' yamllint -s -c "${scriptdir}/yamlconfig.yaml"
 
+# reuse: https://git.fsfe.org/reuse/tool
+# Install via: dnf install reuse
+echo "=====  reuse  ====="
+reuse lint
+
 (! < "${OUTPUTS_FILE}" read -r)
