@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: The RamenDR authors
+# SPDX-License-Identifier: Apache-2.0
+
 # Create ManagedClusterView for a PV
 ---
 apiVersion: view.open-cluster-management.io/v1beta1

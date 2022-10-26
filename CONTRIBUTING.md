@@ -1,9 +1,14 @@
+<!--
+SPDX-FileCopyrightText: The RamenDR authors
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # How to Contribute
 
-The Ramen project in under [Apache 2.0 license](LICENSE). We accept
-contributions via GitHub pull requests. This document outlines some of the
-conventions related to development workflow to make it easier to get your
-contribution accepted.
+The Ramen project in under [Apache 2.0 license](LICENSES/Apache-2.0.txt).
+We accept contributions via GitHub pull requests. This document outlines
+some of the conventions related to development workflow to make it
+easier to get your contribution accepted.
 
 ## Certificate of Origin
 
