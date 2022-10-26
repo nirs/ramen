@@ -3,8 +3,6 @@ Upstream-Name: Ramen
 Upstream-Contact: The RamenDR authors
 Source: https://github.com/RamenDR/ramen
 
-# Sample paragraph, commented out:
-#
-# Files: src/*
-# Copyright: $YEAR $NAME <$CONTACT>
-# License: ...
+Files: config/*
+Copyright: The RamenDR Authors
+License: CC0-1.0
