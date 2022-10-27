@@ -2,16 +2,11 @@
 # yamllint disable rule:line-length
 
 name: PR and branch sanity
-on:  # yamllint disable-line rule:truthy
-  push:
-    tags:
-      - v*
-    branches:
-      - release-*
-      - main
-  pull_request:
-    branches:
-      - '*'
+
+# This workflow will run when developer push a topic branch to their
+# fork in github, minimizing noise for maintainers.
+on: [push, pull_request]
+
 env:
   GO_VERSION: "1.18"
   IMAGE_TAG_BASE: "quay.io/ramendr/ramen"
