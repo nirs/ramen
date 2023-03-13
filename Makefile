@@ -182,6 +182,9 @@ test-drenv:
 test-ramenctl:
 	$(MAKE) -C ramenctl
 
+test-e2e:
+	go test ./e2e
+
 ##@ Build
 
 # Build manager binary
