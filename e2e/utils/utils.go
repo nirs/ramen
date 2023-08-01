@@ -1,12 +1,13 @@
-package e2e_test
+package utils
 
 import (
 	"fmt"
 
+	"github.com/red-hat-storage/ramen/e2e"
 	"k8s.io/client-go/kubernetes"
 )
 
-func runOnAllClusters(testContext *TestContext, f func(kubernetes.Interface) error) error {
+func RunOnAllClusters(testContext *e2e.Context, f func(kubernetes.Interface) error) error {
 	var err error
 
 	err = f(testContext.HubClient())
@@ -27,7 +28,7 @@ func runOnAllClusters(testContext *TestContext, f func(kubernetes.Interface) err
 	return err
 }
 
-func runOnAllOCPClusters(testContext *TestContext, f func(string) error) error {
+func RunOnAllOCPClusters(testContext *e2e.Context, f func(string) error) error {
 	var err error
 
 	for _, cluster := range testContext.Config.Clusters {

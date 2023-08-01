@@ -3,13 +3,14 @@ package e2e_test
 import (
 	"context"
 
+	"github.com/red-hat-storage/ramen/e2e"
 	"github.com/stretchr/testify/suite"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type InfraValidationSuite struct {
 	suite.Suite
-	testContext *TestContext
+	testContext *e2e.Context
 }
 
 func (suite *InfraValidationSuite) SetupSuite() {

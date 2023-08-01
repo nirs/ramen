@@ -3,12 +3,13 @@ package e2e_test
 import (
 	"fmt"
 
+	"github.com/red-hat-storage/ramen/e2e"
 	"github.com/stretchr/testify/suite"
 )
 
 type RegionalDRSuite struct {
 	suite.Suite
-	testContext *TestContext
+	testContext *e2e.Context
 }
 
 func (suite *RegionalDRSuite) SetupSuite() {

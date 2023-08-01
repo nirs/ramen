@@ -1,9 +1,7 @@
----
 Clusters:
-  hub:
-    kubeconfigpath: ./config/hubKconfig
   c1:
-    kubeconfigpath: ./config/c1Kconfig
+    kubeconfigpath: /home/nsoffer/.config/drenv/e2e/kubeconfigs/dr1
   c2:
-    kubeconfigpath: ./config/c2Kconfig
-SetupRegionalDRonOCP: false
+    kubeconfigpath: /home/nsoffer/.config/drenv/e2e/kubeconfigs/dr2
+  hub:
+    kubeconfigpath: /home/nsoffer/.config/drenv/e2e/kubeconfigs/hub
