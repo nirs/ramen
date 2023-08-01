@@ -1,6 +1,7 @@
 package e2e_test
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"strings"
@@ -11,10 +12,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-var configFile = "./config/config.yaml"
-
 func init() {
-	viper.SetConfigFile(configFile)
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
 	viper.SetEnvPrefix("RAMENE2E")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
@@ -32,6 +32,8 @@ type TestContext struct {
 		k8sClientSet kubernetes.Interface
 	}
 }
+
+var configDir = flag.String("config", "./config", "Config directory")
 
 func validateConfig(config *Config) {
 	if config.Clusters["hub"].KubeconfigPath == "" {
@@ -52,6 +54,8 @@ func validateConfig(config *Config) {
 
 func TestMain(t *testing.T) {
 	config := &Config{}
+
+	viper.AddConfigPath(*configDir)
 
 	if err := viper.ReadInConfig(); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to read configuration file: %v\n", err)
