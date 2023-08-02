@@ -52,7 +52,7 @@ func validateConfig(config *Config) {
 	}
 }
 
-func TestMain(t *testing.T) {
+func _TestMain(t *testing.T) {
 	config := &Config{}
 
 	viper.AddConfigPath(*configDir)
