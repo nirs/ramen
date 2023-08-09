@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+# Watch ramen resources status in all clusters for one workload.
+
+import datetime
+import json
+import sys
+import time
+import signal
+
+import yaml
+
+from drenv import kubectl
+
+# XXX Use enviroment ramen info.
+ENV = {
+    "hub": "hub",
+    "clusters": ["dr1", "dr2"],
+}
+
+# XXX Get from yaml?
+DRPC = "busybox-drpc"
+VRG = "busybox-drpc"
+VR = "busybox-pvc"
+NS = "busybox-sample"
+
+
+def get_drpc(hub):
+    out = kubectl.get(
+        "drpc", DRPC, "-n", NS, "-o", "json", "--ignore-not-found", context=hub
+    )
+    if not out:
+        return {}
+
+    return json.loads(out)
+
+
+def get_vrg(cluster):
+    out = kubectl.get(
+        "vrg", VRG, "-n", NS, "-o", "json", "--ignore-not-found", context=cluster
+    )
+    if not out:
+        return {}
+
+    return json.loads(out)
+
+
+def get_vr(cluster):
+    out = kubectl.get(
+        "vr", VR, "-n", NS, "-o", "json", "--ignore-not-found", context=cluster
+    )
+    if not out:
+        return {}
+
+    return json.loads(out)
+
+
+def get_status(env):
+    hub = env["hub"]
+    status = {hub: {}}
+
+    drpc = get_drpc(hub)
+    if drpc:
+        drpc_status = drpc.get("status", {})
+        status[hub]["drpc"] = {
+            "phase": drpc_status.get("phase", ""),
+            "progression": drpc_status.get("progression", ""),
+            "lastGroupSyncTime": drpc_status.get("lastGroupSyncTime", ""),
+            "conditions": {
+                c["type"]: c["status"] for c in drpc_status.get("conditions", [])
+            },
+        }
+
+    for cluster in env["clusters"]:
+        status[cluster] = {}
+        vrg = get_vrg(cluster)
+        if vrg:
+            vrg_status = vrg.get("status", {})
+            status[cluster]["vrg"] = {
+                "state": vrg_status.get("state", ""),
+                "conditions": {
+                    c["type"]: c["status"] for c in vrg_status.get("conditions", [])
+                },
+            }
+        vr = get_vr(cluster)
+        if vr:
+            vr_status = vr.get("status", {})
+            status[cluster]["vr"] = {
+                "state": vr_status.get("state", ""),
+                "conditions": {
+                    c["type"]: c["status"] for c in vr_status.get("conditions", [])
+                },
+            }
+
+    return status
+
+
+def print_status(status):
+    out = {
+        "time": datetime.datetime.now().isoformat(),
+        "status": status,
+    }
+    print("---")
+    yaml.dump(out, sys.stdout, sort_keys=False)
+
+
+def print_duration(duration):
+    out = {"duration": round(duration, 3)}
+    yaml.dump(out, sys.stdout, sort_keys=False)
+
+
+def handle_signal(signo, frame):
+    raise KeyboardInterrupt
+
+
+signal.signal(signal.SIGINT, handle_signal)
+
+last_status = None
+last_time = None
+
+try:
+    while True:
+        now = time.monotonic()
+        new_status = get_status(ENV)
+        if new_status != last_status:
+            if last_time is not None:
+                print_duration(now - last_time)
+            print_status(new_status)
+            last_status = new_status
+            last_time = now
+        else:
+            time.sleep(2)
+except KeyboardInterrupt:
+    pass
