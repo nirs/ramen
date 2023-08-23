@@ -254,3 +254,13 @@ func UpdatePVCLabels(pvc *corev1.PersistentVolumeClaim, labels map[string]string
 	}
 }
 
+// UpdatePVCAnnotations update PVC's annotations from specified annotations.
+func UpdatePVCAnnotations(pvc *corev1.PersistentVolumeClaim, annotations map[string]string) {
+	if pvc.Annotations == nil {
+		pvc.Annotations = make(map[string]string, len(annotations))
+	}
+
+	for key, val := range annotations {
+		pvc.Annotations[key] = val
+	}
+}
