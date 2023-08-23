@@ -242,3 +242,15 @@ func DeletePVC(ctx context.Context,
 
 	return nil
 }
+
+// UpdatePVCLabels update PVC's labels from specified labels.
+func UpdatePVCLabels(pvc *corev1.PersistentVolumeClaim, labels map[string]string) {
+	if pvc.Labels == nil {
+		pvc.Labels = make(map[string]string, len(labels))
+	}
+
+	for key, val := range labels {
+		pvc.Labels[key] = val
+	}
+}
+
