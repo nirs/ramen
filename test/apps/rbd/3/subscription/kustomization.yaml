@@ -1,0 +1,6 @@
+---
+resources:
+- ../../subscription
+namespace: busybox-rbd-3
+commonLabels:
+  app: busybox-rbd-3
