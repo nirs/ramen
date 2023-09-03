@@ -72,6 +72,21 @@ kubectl.wait(
     log=test.debug,
 )
 
+test.info("Waiting until '%s' application is replicated", config["namespace"])
+drenv.wait_for(
+    f"drpc/{config['drpc']}",
+    output="jsonpath={.status.lastGroupSyncTime}",
+    namespace=config["namespace"],
+    timeout=300,
+    profile=test.env["hub"],
+    log=test.debug,
+)
+
+# Verify that the PVC and PV were not modified by protecting the app.
+# (not sure that this is the best way).
+
+test.info("Checking '%s' application PVC", config["namespace"])
+
 out = kubectl.get(
     f"pvc/{config['pvc']}",
     f"--namespace={config['namespace']}",
@@ -80,9 +95,6 @@ out = kubectl.get(
 )
 pvc_after = json.loads(out)
 
-# Verify that the PVC and PV were not modified by protecting the app.
-# (not sure that this is the best way).
-
 if pvc_after["metadata"]["uid"] != pvc_before["metadata"]["uid"]:
     raise RuntimeError(f"PVC uid changed: before={pvc_after} after={pvc_before}")
 
@@ -90,6 +102,8 @@ if pvc_after["spec"]["volumeName"] != pvc_before["spec"]["volumeName"]:
     raise RuntimeError(f"PVC volume changed: before={pvc_after} after={pvc_before}")
 
 # But the PV reclaim policy must change to "Retain".
+
+test.info("Checking '%s' application PV", config["namespace"])
 
 out = kubectl.get(
     "pv",
@@ -100,15 +114,5 @@ out = kubectl.get(
 pv = json.loads(out)
 if pv["spec"]["persistentVolumeReclaimPolicy"] != "Retain":
     raise RuntimeError(f"Unexpected PV reclaim policy: {pv}")
-
-test.info("Waiting until '%s' application is replicated", config["namespace"])
-drenv.wait_for(
-    f"drpc/{config['drpc']}",
-    output="jsonpath={.status.lastGroupSyncTime}",
-    namespace=config["namespace"],
-    timeout=300,
-    profile=test.env["hub"],
-    log=test.debug,
-)
 
 test.info("Application '%s' was protected successfully", config["namespace"])
