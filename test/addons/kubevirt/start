@@ -27,6 +27,27 @@ def deploy(cluster):
     print("Deploying kubevirt cr")
     kubectl.apply("--kustomize=cr", context=cluster)
 
+    create_public_key_secret(cluster)
+
+
+def create_public_key_secret(cluster):
+    """
+    Create a secret with current user public key for accessing VM via ssh using
+    access credentials API:
+    https://kubevirt.io/user-guide/virtual_machines/accessing_virtual_machines/#static-ssh-public-key-injection-via-cloud-init
+    """
+    public_key = os.path.expanduser("~/.ssh/id_rsa.pub")
+    print(f"Creating secret my-public-key using '{public_key}'")
+    secret = kubectl.create(
+        "secret",
+        "generic",
+        "my-public-key",
+        f"--from-file=key1={public_key}",
+        "--dry-run=client",
+        "--output=yaml",
+    )
+    kubectl.apply("--filename=-", input=secret, context=cluster)
+
 
 def wait(cluster):
     print("Waiting until kubevirt cr is available")

@@ -32,6 +32,13 @@ spec:
       networks:
         - name: default
           pod: {}
+      accessCredentials:
+        - sshPublicKey:
+            source:
+              secret:
+                secretName: my-public-key
+            propagationMethod:
+              configDrive: {}
       volumes:
         - name: containerdisk
           containerDisk:
