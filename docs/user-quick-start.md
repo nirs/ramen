@@ -89,7 +89,7 @@ enough resources:
 1. Install the `kubectl` tool. See
    [Install and Set Up kubectl on Linux](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
    for details.
-   Tested with version v1.27.4.
+   Tested with version v1.28.3.
 
 1. Install minikube - on Fedora you can use::
 
@@ -97,7 +97,7 @@ enough resources:
    sudo dnf install https://storage.googleapis.com/minikube/releases/latest/minikube-latest.x86_64.rpm
    ```
 
-   Tested with version v1.31.
+   Tested with version v1.32.0.
 
    Verify you can create a Kubernetes cluster with minikube.
 
