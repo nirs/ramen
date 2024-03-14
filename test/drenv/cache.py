@@ -2,32 +2,80 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import shutil
 import subprocess
+import time
 
 from . import commands
 
+HOUR = 3600
 
-def path(key):
+# Refresh threshold in seconds.
+REFRESH_SECONDS = 12 * HOUR
+
+# Fetch threshold in seconds.
+FETCH_SECONDS = 48 * HOUR
+
+
+def clear(key=""):
+    """
+    Clear cached key. If key is not set clear the entire cache.
+    """
+    filename = _path(key)
+    try:
+        shutil.rmtree(filename)
+    except FileNotFoundError:
+        pass
+
+
+def refresh(kustomization_dir, key, log=print):
+    """
+    Rebuild the cache if older than REFRESH_SECONDS.
+    """
+    filename = _path(key)
+    if _age(filename) > REFRESH_SECONDS:
+        _fetch(kustomization_dir, filename, log=log)
+
+
+def get(kustomization_dir, key, log=print):
+    """
+    Return path to cached kustomization output. Rebuild the cache if older than
+    FETCH_SECONDS.
+    """
+    filename = _path(key)
+    if _age(filename) > FETCH_SECONDS:
+        _fetch(kustomization_dir, filename, log=log)
+    return filename
+
+
+def _path(key):
     cache_home = os.environ.get("XDG_CACHE_HOME", ".cache")
     return os.path.expanduser(f"~/{cache_home}/drenv/{key}")
 
 
-def fetch(kustomization_dir, dest, log=print):
+def _age(filename):
+    try:
+        mtime = os.path.getmtime(filename)
+    except FileNotFoundError:
+        mtime = 0
+    return time.time() - mtime
+
+
+def _fetch(kustomization_dir, dest, log=print):
     """
     Build kustomization and store the output yaml in dest.
 
     TODO: retry on errors.
     """
-    if not os.path.exists(dest):
-        log(f"Fetching {dest}")
-        dest_dir = os.path.dirname(dest)
-        os.makedirs(dest_dir, exist_ok=True)
-        tmp = dest + ".tmp"
-        try:
-            _build_kustomization(kustomization_dir, tmp)
-            os.rename(tmp, dest)
-        finally:
-            _silent_remove(tmp)
+    log(f"Fetching {dest}")
+    dest_dir = os.path.dirname(dest)
+    os.makedirs(dest_dir, exist_ok=True)
+    tmp = dest + ".tmp"
+    try:
+        _build_kustomization(kustomization_dir, tmp)
+        os.rename(tmp, dest)
+    finally:
+        _silent_remove(tmp)
 
 
 def _build_kustomization(kustomization_dir, dest):

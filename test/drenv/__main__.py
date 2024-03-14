@@ -67,25 +67,21 @@ def main():
 def cmd_clear(env, args):
     start = time.monotonic()
     logging.info("[%s] Clearing cache", env["name"])
-    cache_dir = cache.path("")
-    try:
-        shutil.rmtree(cache_dir)
-    except FileNotFoundError:
-        pass
+    cache.clear()
     logging.info(
-        "[%s] Fetching finishied in %.2f seconds",
+        "[%s] Cache cleared in %.2f seconds",
         env["name"],
         time.monotonic() - start,
     )
 
 
-def cmd_fetch(env, args):
+def cmd_cache(env, args):
     start = time.monotonic()
-    logging.info("[%s] Fetching", env["name"])
+    logging.info("[%s] Refreshing cache", env["name"])
     addons = collect_addons(env)
-    execute(fetch_addon, addons, max_workers=args.max_workers, ctx=env["name"])
+    execute(cache_addon, addons, max_workers=args.max_workers, ctx=env["name"])
     logging.info(
-        "[%s] Fetching finishied in %.2f seconds",
+        "[%s] Cache refreshed in %.2f seconds",
         env["name"],
         time.monotonic() - start,
     )
@@ -369,17 +365,13 @@ def run_worker(worker, hooks=(), reverse=False, allow_failure=False):
         run_addon(addon, worker["name"], hooks=hooks, allow_failure=allow_failure)
 
 
-def fetch_addon(addon, ctx="global"):
+def cache_addon(addon, ctx="global"):
     addon_dir = os.path.join(ADDONS_DIR, addon["name"])
     if not os.path.isdir(addon_dir):
-        logging.warning(
-            "[%s] Addon '%s' does not exist - skipping",
-            ctx,
-            addon["name"],
-        )
+        skip(addon, ctx)
         return
 
-    hook = os.path.join(addon_dir, "fetch")
+    hook = os.path.join(addon_dir, "cache")
     if os.path.isfile(hook):
         run_hook(hook, (), ctx)
 
@@ -387,17 +379,21 @@ def fetch_addon(addon, ctx="global"):
 def run_addon(addon, name, hooks=(), allow_failure=False):
     addon_dir = os.path.join(ADDONS_DIR, addon["name"])
     if not os.path.isdir(addon_dir):
-        logging.warning(
-            "[%s] Addon '%s' does not exist - skipping",
-            name,
-            addon["name"],
-        )
+        skip(addon, ctx)
         return
 
     for filename in hooks:
         hook = os.path.join(addon_dir, filename)
         if os.path.isfile(hook):
             run_hook(hook, addon["args"], name, allow_failure=allow_failure)
+
+
+def skip(addon, ctx):
+    logging.warning(
+        "[%s] Addon '%s' does not exist - skipping",
+        ctx,
+        addon["name"],
+    )
 
 
 def run_hook(hook, args, name, allow_failure=False):
