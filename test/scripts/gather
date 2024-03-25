@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+
+# SPDX-FileCopyrightText: The RamenDR authors
+# SPDX-License-Identifier: Apache-2.0
+
+import argparse
+import os
+
+from drenv import kubectl
+
+p = argparse.ArgumentParser()
+p.add_argument(
+    "-n",
+    "--namespace",
+    default="default",
+    help="namespace to collect logs from",
+)
+p.add_argument("context", help="cluster context to collect logs from")
+p.add_argument("-o", "--output", default="logs", help="directory for storing logs")
+args = p.parse_args()
+
+os.makedirs(args.output, exist_ok=True)
+
+cluster_dir = os.path.join(args.output, args.context)
+os.makedirs(cluster_dir, exist_ok=True)
+
+namespace_dir = os.path.join(cluster_dir, args.namespace)
+os.makedirs(namespace_dir, exist_ok=True)
+
+pod_dir = os.path.join(namespace_dir, "pod")
+os.makedirs(pod_dir, exist_ok=True)
+
+print(f"Gathering resources in namespace '{args.namespace}")
+resources = os.path.join(namespace_dir, "resources")
+out = kubectl.get("all", f"--namespace={args.namespace}", context=args.context)
+with open(resources, "w") as f:
+    f.write(out)
+
+print(f"Gathering logs from namespace '{args.namespace}' in cluser '{args.context}'")
+
+out = kubectl.get(
+    "pod",
+    f"--namespace={args.namespace}",
+    "--output=name",
+    context=args.context,
+)
+for pod in out.splitlines():
+    print(f"Gathering logs from {pod}")
+    pod_log = os.path.join(namespace_dir, pod + ".log")
+    with open(pod_log, "wb") as f:
+        for line in kubectl.logs(
+            pod,
+            f"--namespace={args.namespace}",
+            context=args.context,
+            keepends=True,
+            decode=False,
+        ):
+            f.write(line)
