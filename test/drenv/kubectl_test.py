@@ -120,6 +120,24 @@ def test_annotate(tmpenv, capsys):
     assert annotation not in _get_annotations(pod, tmpenv.profile)
 
 
+def test_logs(tmpenv):
+    pod = kubectl.get("pod", "--output=name", context=tmpenv.profile).strip()
+    log = list(kubectl.logs(pod, context=tmpenv.profile))
+    assert not log[0].endswith("\n")
+
+
+def test_logs_keepends(tmpenv):
+    pod = kubectl.get("pod", "--output=name", context=tmpenv.profile).strip()
+    log = list(kubectl.logs(pod, context=tmpenv.profile, keepends=True))
+    assert log[0].endswith("\n")
+
+
+def test_logs_keepends_no_decode(tmpenv):
+    pod = kubectl.get("pod", "--output=name", context=tmpenv.profile).strip()
+    log = list(kubectl.logs(pod, context=tmpenv.profile, keepends=True, decode=False))
+    assert log[0].endswith(b"\n")
+
+
 def test_delete(tmpenv, capsys):
     pod = kubectl.get("pod", "--output=name", context=tmpenv.profile).strip()
     kubectl.delete(pod, context=tmpenv.profile)
