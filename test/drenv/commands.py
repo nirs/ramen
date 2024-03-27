@@ -93,7 +93,7 @@ def run(*args, input=None, decode=True):
     return output.decode() if decode else output
 
 
-def watch(*args, input=None):
+def watch(*args, input=None, keepends=False, decode=True):
     """
     Run command args, iterating over lines read from the child process stdout.
 
@@ -142,7 +142,9 @@ def watch(*args, input=None):
                         line = bytes(partial) + line
                         del partial[:]
 
-                    yield line.rstrip().decode()
+                    if not keepends:
+                        line = line.rstrip()
+                    yield line.decode() if decode else line
 
         if partial:
             yield partial.rstrip().decode()
