@@ -76,6 +76,18 @@ def label(name, value, overwrite=False, context=None, log=print):
     _watch(*args, context=context, log=log)
 
 
+def logs(*args, context=None, keepends=False, decode=True):
+    """
+    Iterate over log lines from a pod.
+    """
+    cmd = ["kubectl", "logs"]
+    if context:
+        cmd.extend(("--context", context))
+    cmd.extend(args)
+    for line in commands.watch(*cmd, keepends=keepends, decode=decode):
+        yield line
+
+
 def annotate(
     resource,
     annotations,
