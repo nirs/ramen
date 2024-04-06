@@ -1,0 +1,216 @@
+#!/usr/bin/env python3
+
+# SPDX-FileCopyrightText: The RamenDR authors
+# SPDX-License-Identifier: Apache-2.0
+
+import argparse
+import json
+import os
+import subprocess
+
+import yaml
+
+from drenv import ceph
+from drenv import commands
+from drenv import kubectl
+from drenv import minikube
+
+
+def create_dir(outdir, *names):
+    path = os.path.join(outdir, *names)
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def list_api_resources(context, namespaced=True):
+    out = kubectl.api_resources(namespaced=namespaced, output="name", context=context)
+    return out.splitlines()
+
+
+def list_namespaces(context):
+    out = kubectl.get(
+        "namespace",
+        "--output=jsonpath={.items[*].metadata.name}",
+        context=context,
+    )
+    return out.split()
+
+
+def list_resources(context, namespace, kind):
+    out = kubectl.get(
+        kind,
+        f"--namespace={namespace}",
+        "--output=jsonpath={.items[*].metadata.name}",
+        context=context,
+    )
+    return out.split()
+
+
+def list_containers(context, namespace, pod_name):
+    out = kubectl.get(
+        "pod",
+        pod_name,
+        f"--namespace={namespace}",
+        "--output=jsonpath={.spec.containers[*].name}",
+        context=context,
+    )
+    return out.split()
+
+
+def gather_resource(context, namespace, kind, name):
+    print(f"Gathering {namespace}/{kind}/{name}")
+    cmd = [
+        "kubectl",
+        "get",
+        kind,
+        name,
+        f"--namespace={namespace}",
+        "--output=yaml",
+        f"--context={context}",
+    ]
+    filename = os.path.join(namespaces_dir, namespace, kind, name + ".yaml")
+    with open(filename, "w") as f:
+        subprocess.run(cmd, stdout=f)
+
+
+def gather_pod(context, namespace, pod_name):
+    print(f"Gathering {namespace}/pods/{pod_name}")
+    pod_dir = create_dir(namespaces_dir, namespace, "pods", pod_name)
+
+    cmd = [
+        "kubectl",
+        "get",
+        "pods",
+        pod_name,
+        f"--namespace={namespace}",
+        "--output=yaml",
+        f"--context={context}",
+    ]
+    filename = os.path.join(pod_dir, pod_name + ".yaml")
+    with open(filename, "w") as f:
+        subprocess.run(cmd, stdout=f)
+
+    for container in list_containers(context, namespace, pod_name):
+        create_dir(pod_dir, container)
+        gather_logs(context, namespace, pod_name, container)
+
+
+def gather_logs(context, namespace, pod_name, container_name):
+    print(f"Gathering current log for {namespace}/{pod_name}/{container_name}")
+    current = os.path.join(
+        namespaces_dir, namespace, "pods", pod_name, container_name, "current.log"
+    )
+    cmd = [
+        "kubectl",
+        "logs",
+        pod_name,
+        f"--namespace={namespace}",
+        f"--container={container_name}",
+        f"--context={context}",
+    ]
+    with open(current, "w") as f:
+        subprocess.run(cmd, stdout=f)
+
+    print(f"Gathering previous log for {namespace}/{pod_name}/{container_name}")
+    previous = os.path.join(
+        namespaces_dir, namespace, "pods", pod_name, container_name, "previous.log"
+    )
+    cmd = [
+        "kubectl",
+        "logs",
+        pod_name,
+        f"--namespace={namespace}",
+        f"--container={container_name}",
+        "--previous",
+        f"--context={context}",
+    ]
+    with open(previous, "w") as f:
+        subprocess.run(cmd, stdout=f)
+
+
+def gather_command(context, *cmd):
+    print(f"Gathering {" ".join(cmd)}")
+    with open(os.path.join(commands_dir, "-".join(cmd)), "w") as f:
+        out = ceph.tool(context, *cmd)
+        f.write(out)
+
+
+def gather_node(context):
+    # TODO: Correct only for minikube.
+    node_dir = create_dir(cluster_dir, "nodes", context)
+    source = "/data/rook/rook-ceph/log/ceph-client.rbd-mirror.a.log"
+    target = os.path.join(os.path.abspath(node_dir), os.path.basename(source))
+    print(f"Gathering {source}")
+    try:
+        minikube.cp(context, f"{context}:{source}", target)
+    except commands.Error as e:
+        # Ignore the case when file was modified while copying.
+        if e.exitcode != 10:
+            print(e)
+
+
+def csv(s):
+    return s.split(",")
+
+
+p = argparse.ArgumentParser()
+p.add_argument("context", help="cluster context to gather data from")
+p.add_argument(
+    "--namespaces",
+    type=csv,
+    help="comma separated namespaces to gather data from",
+)
+p.add_argument(
+    "-o",
+    "--output",
+    default="gather",
+    help="directory for storing gathered data",
+)
+args = p.parse_args()
+
+cluster_dir = create_dir(args.output, args.context)
+namespaces_dir = create_dir(cluster_dir, "namespaces")
+commands_dir = create_dir(cluster_dir, "commands")
+
+# TODO: gather non-namespaced resoruces.
+namespaced_api_resources = list_api_resources(args.context)
+
+# Pods have special handling.
+namespaced_api_resources.remove("pods")
+
+# Fails with "Error from server (MethodNotAllowed): the server does not allow
+# this method on the requested resource".
+namespaced_api_resources.remove("bindings")
+namespaced_api_resources.remove("localsubjectaccessreviews.authorization.k8s.io")
+
+# We get hudreds of these in any namespace, look like
+# https://github.com/operator-framework/operator-lifecycle-manager/issues/3161
+namespaced_api_resources.remove("packagemanifests.packages.operators.coreos.com")
+
+if args.namespaces:
+    print(f"Gathering data from namespaces: {", ".join(args.namespaces)}")
+    namespaces = args.namespaces
+else:
+    print(f"Gathering data from all namespaces")
+    namespaces = list_namespaces(args.context)
+
+for namespace in namespaces:
+    namespace_dir = create_dir(namespaces_dir, namespace)
+    for kind in namespaced_api_resources:
+        names = list_resources(args.context, namespace, kind)
+        if not names:
+            continue
+
+        create_dir(namespace_dir, kind)
+        for name in names:
+            gather_resource(args.context, namespace, kind, name)
+
+    for pod in list_resources(args.context, namespace, "pod"):
+        gather_pod(args.context, namespace, pod)
+
+# TODO: works only when rook-ceph is deployed.
+gather_command(args.context, "ceph", "status")
+gather_command(args.context, "ceph", "osd", "blocklist", "ls")
+
+# TODO: works only when rook-mirror is configured.
+gather_node(args.context)

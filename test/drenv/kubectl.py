@@ -6,6 +6,20 @@ from . import commands
 JSONPATH_NEWLINE = '{"\\n"}'
 
 
+def api_resources(namespaced=True, output=None, context=None):
+    """
+    Run kubectl api-resources and return the output.
+    """
+    args = []
+    if namespaced:
+        args.append("--namespaced=true")
+    else:
+        args.append("--namespaced=false")
+    if output:
+        args.append(f"--output={output}")
+    return _run("api-resources", *args, context=context)
+
+
 def version(context=None, output=None):
     """
     Return local and server version info. Useful for testing connectivity to
