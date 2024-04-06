@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+
+# SPDX-FileCopyrightText: The RamenDR authors
+# SPDX-License-Identifier: Apache-2.0
+
+import argparse
+import os
+
+from drenv import kubectl
+from drenv import commands
+
+
+def rook_ceph(context, *args):
+    return commands.run("kubectl", "rook-ceph", "--context", context, *args)
+
+
+NAMESPACE = "rook-ceph"
+
+KINDS = (
+    "cephcluster.ceph.rook.io",
+    "cephblockpool.ceph.rook.io",
+    "cephrbdmirror.ceph.rook.io",
+    "deployment.apps",
+    "pod",
+    "replicaset.apps",
+    "statefulset.apps",
+    "daemonset.apps",
+    "configmap",
+    "secret",
+)
+
+p = argparse.ArgumentParser()
+p.add_argument("context", help="cluster context to collect logs from")
+p.add_argument("-o", "--output", default="logs", help="directory for storing logs")
+args = p.parse_args()
+
+os.makedirs(args.output, exist_ok=True)
+
+cluster_dir = os.path.join(args.output, args.context)
+os.makedirs(cluster_dir, exist_ok=True)
+
+namespace_dir = os.path.join(cluster_dir, NAMESPACE)
+os.makedirs(namespace_dir, exist_ok=True)
+
+print(f"Gathering resources in namespace '{NAMESPACE}")
+resources = os.path.join(namespace_dir, "resources")
+out = kubectl.get("all", f"--namespace={NAMESPACE}", context=args.context)
+with open(resources, "w") as f:
+    f.write(out)
+
+for kind in KINDS:
+    out = kubectl.get(
+        kind,
+        f"--namespace={NAMESPACE}",
+        "--output=name",
+        context=args.context,
+    )
+    names = out.splitlines()
+    if not names:
+        continue
+
+    kind_dir = os.path.join(namespace_dir, kind)
+    os.makedirs(kind_dir, exist_ok=True)
+    for name in names:
+        print(f"Gathering {name}")
+        out = kubectl.get(
+            name,
+            f"--namespace={NAMESPACE}",
+            "--output=yaml",
+            context=args.context,
+        )
+        filename = os.path.join(namespace_dir, name + ".yaml")
+        with open(filename, "w") as f:
+            f.write(out)
+
+out = kubectl.get(
+    "pod",
+    f"--namespace={NAMESPACE}",
+    "--output=name",
+    context=args.context,
+)
+for pod in out.splitlines():
+    print(f"Gathering logs for {pod}")
+    filename = os.path.join(namespace_dir, pod + ".log")
+    with open(filename, "wb") as f:
+        for line in kubectl.logs(
+            pod,
+            f"--namespace={NAMESPACE}",
+            context=args.context,
+            keepends=True,
+            decode=False,
+        ):
+            f.write(line)
+
+cmd_dir = os.path.join(cluster_dir, "commands")
+os.makedirs(cmd_dir, exist_ok=True)
+
+print("Gathering ceph status")
+with open(os.path.join(cmd_dir, "ceph-status"), "w") as f:
+    out = rook_ceph(args.context, "ceph", "status")
+    f.write(out)
+
+print("Gathering dr health")
+with open(os.path.join(cmd_dir, "dr-health"), "w") as f:
+    out = rook_ceph(args.context, "dr", "health")
+    f.write(out)
+
+print("Gathering ceph osd blocklist ls")
+with open(os.path.join(cmd_dir, "ceph-osd-blocklist-ls"), "w") as f:
+    out = rook_ceph(args.context, "ceph", "osd", "blocklist", "ls")
+    f.write(out)
