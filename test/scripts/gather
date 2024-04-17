@@ -4,11 +4,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import argparse
-import json
 import os
 import subprocess
-
-import yaml
+import concurrent.futures
 
 from drenv import ceph
 from drenv import commands
@@ -194,23 +192,25 @@ else:
     print(f"Gathering data from all namespaces")
     namespaces = list_namespaces(args.context)
 
-for namespace in namespaces:
-    namespace_dir = create_dir(namespaces_dir, namespace)
-    for kind in namespaced_api_resources:
-        names = list_resources(args.context, namespace, kind)
-        if not names:
-            continue
+online_cpus = os.sysconf("SC_NPROCESSORS_ONLN")
+with concurrent.futures.ThreadPoolExecutor(max_workers=online_cpus) as executor:
+    for namespace in namespaces:
+        namespace_dir = create_dir(namespaces_dir, namespace)
+        for kind in namespaced_api_resources:
+            names = list_resources(args.context, namespace, kind)
+            if not names:
+                continue
 
-        create_dir(namespace_dir, kind)
-        for name in names:
-            gather_resource(args.context, namespace, kind, name)
+            create_dir(namespace_dir, kind)
+            for name in names:
+                executor.submit(gather_resource, args.context, namespace, kind, name)
 
-    for pod in list_resources(args.context, namespace, "pod"):
-        gather_pod(args.context, namespace, pod)
+        for pod in list_resources(args.context, namespace, "pod"):
+            executor.submit(gather_pod, args.context, namespace, pod)
 
-# TODO: works only when rook-ceph is deployed.
-gather_command(args.context, "ceph", "status")
-gather_command(args.context, "ceph", "osd", "blocklist", "ls")
+    # TODO: works only when rook-ceph is deployed.
+    executor.submit(gather_command, args.context, "ceph", "status")
+    executor.submit(gather_command, args.context, "ceph", "osd", "blocklist", "ls")
 
-# TODO: works only when rook-mirror is configured.
-gather_node(args.context)
+    # TODO: works only when rook-mirror is configured.
+    executor.submit(gather_node, args.context)
