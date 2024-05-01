@@ -15,7 +15,7 @@ env:
 
 jobs:
   e2e-rdr:
-    runs-on: self-hosted
+    runs-on: [self-hosted, e2e-rdr-virt]
     if: github.repository == 'nirs/ramen' && github.event.pull_request.author_association == 'OWNER'
 
     steps:
