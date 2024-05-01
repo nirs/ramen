@@ -16,8 +16,8 @@ env:
 
 jobs:
   e2e-rdr:
-    runs-on: [self-hosted, e2e-rdr]
-    if: github.repository == 'RamenDR/ramen' && github.event.pull_request.author_association == 'MEMBER'
+    runs-on: self-hosted
+    if: github.repository == 'nirs/ramen' && github.event.pull_request.author_association == 'OWNER'
 
     steps:
     - name: Checkout Repo
