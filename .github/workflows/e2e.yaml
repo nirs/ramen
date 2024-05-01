@@ -23,16 +23,16 @@ jobs:
     - name: Checkout Repo
       uses: actions/checkout@v3
 
-    - name: Install drenv
-      run: pip install -e test
-
-    - name: Install ramenctl
-      run: pip install -e ramenctl
+    - name: Create virtual environment
+      run: |
+        hack/make-venv .venv
 
     - name: Delete clusters
       if: ${{ always() }}
       working-directory: test
-      run: drenv delete --name-prefix ${{ env.NAME_PREFIX }} envs/regional-dr.yaml
+      run: |
+        source ../venv
+        drenv delete --name-prefix ${{ env.NAME_PREFIX }} envs/regional-dr.yaml
 
     - name: Setup libvirt
       run: test/scripts/setup-libvirt
@@ -44,20 +44,25 @@ jobs:
         max_attempts: 3
         command: |
           cd test
+          source ../venv
           drenv start --max-workers ${{ env.MAX_WORKERS }} --name-prefix ${{ env.NAME_PREFIX }} envs/regional-dr.yaml
 
     - name: Build ramen-operator container
       run: make docker-build
 
     - name: Deploy ramen
-      run: ramenctl deploy --name-prefix ${{ env.NAME_PREFIX }} test/envs/regional-dr.yaml
+      run: |
+        source venv
+        ramenctl deploy --name-prefix ${{ env.NAME_PREFIX }} test/envs/regional-dr.yaml
 
     - name: Configure ramen
       uses: nick-fields/retry@v3
       with:
         timeout_seconds: 60
         max_attempts: 3
-        command: ramenctl config --name-prefix ${{ env.NAME_PREFIX }} test/envs/regional-dr.yaml
+        command: |
+          source venv
+          ramenctl config --name-prefix ${{ env.NAME_PREFIX }} test/envs/regional-dr.yaml
 
     - name: Run e2e tests
       run: |
@@ -67,4 +72,6 @@ jobs:
     - name: Delete clusters
       if: ${{ always() }}
       working-directory: test
-      run: drenv delete --name-prefix ${{ env.NAME_PREFIX }} envs/regional-dr.yaml
+      run: |
+        source ../venv
+        drenv delete --name-prefix ${{ env.NAME_PREFIX }} envs/regional-dr.yaml
