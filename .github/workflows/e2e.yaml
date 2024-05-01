@@ -12,11 +12,11 @@ on:  # yamllint disable-line rule:truthy
 env:
   # Limit number of drenv workers.
   MAX_WORKERS: 4
-  ENV_NAME: rdr
-  ENV_FILE: envs/regional-dr.yaml
+  ENV_NAME: rdr-kubevirt
+  ENV_FILE: envs/regional-dr-kubevirt.yaml
 
 jobs:
-  e2e-rdr:
+  e2e-rdr-virt:
     runs-on: [self-hosted, e2e-rdr-virt]
     if: github.repository == 'nirs/ramen' && github.event.pull_request.author_association == 'OWNER'
 
