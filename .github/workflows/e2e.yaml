@@ -12,6 +12,8 @@ on:  # yamllint disable-line rule:truthy
 env:
   # Limit number of drenv workers.
   MAX_WORKERS: 4
+  ENV_NAME: rdr
+  ENV_FILE: envs/regional-dr.yaml
 
 jobs:
   e2e-rdr:
@@ -31,7 +33,7 @@ jobs:
       working-directory: test
       run: |
         source ../venv
-        drenv delete envs/regional-dr.yaml
+        drenv delete ${{ env.ENV_FILE }}
 
     - name: Setup libvirt
       run: test/scripts/setup-libvirt
@@ -44,15 +46,16 @@ jobs:
         command: |
           cd test
           source ../venv
-          drenv start --max-workers ${{ env.MAX_WORKERS }} envs/regional-dr.yaml
+          drenv start --max-workers ${{ env.MAX_WORKERS }} ${{ env.ENV_FILE }}
 
     - name: Build ramen-operator container
       run: make docker-build
 
     - name: Deploy ramen
+      working-directory: test
       run: |
-        source venv
-        ramenctl deploy test/envs/regional-dr.yaml
+        source ../venv
+        ramenctl deploy --source-dir .. ${{ env.ENV_FILE }}
 
     - name: Configure ramen
       uses: nick-fields/retry@v3
@@ -60,12 +63,13 @@ jobs:
         timeout_seconds: 60
         max_attempts: 3
         command: |
-          source venv
-          ramenctl config test/envs/regional-dr.yaml
+          cd test
+          source ../venv
+          ramenctl config ${{ env.ENV_FILE }}
 
     - name: Run e2e tests
       run: |
-        cp ~/.config/drenv/rdr/config.yaml e2e/config.yaml
+        cp ~/.config/drenv/${{ env.ENV_NAME }}/config.yaml e2e/config.yaml
         make e2e-rdr
 
     - name: Delete clusters
@@ -73,7 +77,7 @@ jobs:
       working-directory: test
       run: |
         source ../venv
-        drenv delete envs/regional-dr.yaml
+        drenv delete ${{ env.ENV_FILE }}
 
     - name: Cleanup drenv
       if: ${{ always() }}
