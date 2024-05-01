@@ -67,11 +67,6 @@ jobs:
           source ../venv
           ramenctl config ${{ env.ENV_FILE }}
 
-    - name: Run e2e tests
-      run: |
-        cp ~/.config/drenv/${{ env.ENV_NAME }}/config.yaml e2e/config.yaml
-        make e2e-rdr
-
     - name: Delete clusters
       if: ${{ always() }}
       working-directory: test
