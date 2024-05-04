@@ -7,4 +7,5 @@ import os
 from drenv import cache
 
 os.chdir(os.path.dirname(__file__))
-cache.fetch(".", "addons/rook-operator.yaml")
+cache.refresh("operator", "addons/kubevirt-operator.yaml")
+cache.refresh("cr", "addons/kubevirt-cr.yaml")

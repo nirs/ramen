@@ -7,4 +7,5 @@ import os
 from drenv import cache
 
 os.chdir(os.path.dirname(__file__))
-cache.fetch(".", "addons/rook-cephfs.yaml")
+cache.refresh("operator", "addons/cdi-operator.yaml")
+cache.refresh("cr", "addons/cdi-cr.yaml")
