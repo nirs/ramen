@@ -20,8 +20,7 @@ TIMEOUT = 600
 
 def deploy(cluster):
     print("Deploying rook ceph cluster")
-    path = cache.path("addons/rook-cluster.yaml")
-    cache.fetch(".", path)
+    path = cache.fetch(".", "addons/rook-cluster.yaml")
     kubectl.apply("--filename", path, context=cluster)
 
 
