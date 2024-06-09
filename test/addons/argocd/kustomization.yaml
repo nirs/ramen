@@ -4,6 +4,7 @@
 # yamllint disable rule:line-length
 ---
 resources:
+  - argocd-ns.yaml
   - https://raw.githubusercontent.com/argoproj/argo-cd/release-2.11/manifests/install.yaml
 
 patches:

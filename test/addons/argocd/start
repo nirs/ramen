@@ -13,7 +13,6 @@ from drenv import cache
 
 def deploy(cluster):
     print("Deploying argocd")
-    kubectl.apply("--filename", "argocd-ns.yaml", context=cluster)
     path = cache.path("addons/argocd-2.11-install.yaml")
     cache.fetch(".", path)
     kubectl.apply("--filename", path, "--namespace", "argocd", context=cluster)
