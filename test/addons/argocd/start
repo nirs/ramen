@@ -6,19 +6,53 @@
 import os
 import sys
 
-from drenv import kubectl
-from drenv import commands
+import drenv
 from drenv import cache
+from drenv import commands
+from drenv import kubectl
 
 
-def deploy(cluster):
+def deploy_argocd(hub):
     print("Deploying argocd")
     path = cache.path("addons/argocd-2.11-install.yaml")
     cache.fetch(".", path)
-    kubectl.apply("--filename", path, "--namespace", "argocd", context=cluster)
+    kubectl.apply("--filename", path, "--namespace", "argocd", context=hub)
 
 
-def wait(cluster):
+def add_clusters(hub, cluster1, cluster2):
+    with drenv.temporary_kubeconfig("drenv-argocd-start.") as env:
+        kubeconfig = env["KUBECONFIG"]
+        print(f"Using temporary kubeconfig '{kubeconfig}'")
+
+        # Need switch to argocd ns first, otherwise will hit argocd bug
+        # see https://github.com/argoproj/argo-cd/issues/14167
+        kubectl.config("use-context", hub, f"--kubeconfig={kubeconfig}")
+        kubectl.config(
+            "set-context",
+            "--current",
+            "--namespace=argocd",
+            f"--kubeconfig={kubeconfig}",
+        )
+
+        print("Logging in to argocd server on hub")
+        for line in commands.watch("argocd", "login", "--core", env=env):
+            print(line)
+
+        for name in [hub, cluster1, cluster2]:
+            print(f"Adding cluster '{name}' to argocd")
+            try:
+                cmd = ["argocd", "cluster", "add", name, "--yes"]
+                for line in commands.watch(*cmd, env=env):
+                    print(line)
+            except commands.Error as e:
+                # ignore known error "NOAUTH" with "argocd cluster add" after
+                # "argocd login --core" see bug
+                # https://github.com/argoproj/argo-cd/issues/18464
+                if e.exitcode != 20 or "NOAUTH" not in e.error:
+                    raise
+
+
+def wait_for_deployments(hub):
     print("Waiting until all deployments are available")
     kubectl.wait(
         "deploy",
@@ -26,7 +60,7 @@ def wait(cluster):
         "--for=condition=Available",
         "--namespace=argocd",
         "--timeout=300s",
-        context=cluster,
+        context=hub,
     )
 
 
@@ -35,23 +69,8 @@ if len(sys.argv) != 4:
     sys.exit(1)
 
 os.chdir(os.path.dirname(__file__))
-hub = sys.argv[1]
+hub, cluster1, cluster2 = sys.argv[1:]
 
-deploy(hub)
-wait(hub)
-
-# Need switch to argocd ns first, otherwise will hit argocd bug
-# see https://github.com/argoproj/argo-cd/issues/14167
-kubectl.config("use-context", hub)
-kubectl.config("set-context", "--current", "--namespace=argocd")
-
-commands.run("argocd", "login", "--core")
-
-for name in sys.argv[1:]:
-    try:
-        commands.run("argocd", "cluster", "add", name, "-y")
-    except commands.Error as e:
-        # ignore known error "NOAUTH" with "argocd cluster add" after "argocd login --core"
-        # see bug https://github.com/argoproj/argo-cd/issues/18464
-        if e.exitcode != 20 or "NOAUTH" not in e.error:
-            raise e
+deploy_argocd(hub)
+wait_for_deployments(hub)
+add_clusters(hub, cluster1, cluster2)
