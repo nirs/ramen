@@ -10,9 +10,9 @@ from drenv import commands
 from drenv import kubectl
 
 
-def deploy_guestbook(cluster):
+def deploy_guestbook(hub, cluster):
     print(
-        f"Deploying application guestbook in namespace argocd-test on cluster {cluster}"
+        f"Deploying application guestbook-{cluster} in namespace argocd-test on cluster {cluster}"
     )
     # need use KUBECONFIG env, switch to hub cluster argocd ns first,
     # otherwise will hit argocd command bug
@@ -32,10 +32,10 @@ def deploy_guestbook(cluster):
             "argocd",
             "app",
             "create",
-            "guestbook",
+            f"guestbook-{cluster}",
             "--repo=https://github.com/argoproj/argocd-example-apps.git",
             "--path=guestbook",
-            "--dest-server=https://kubernetes.default.svc",
+            f"--dest-name={cluster}",
             "--dest-namespace=argocd-test",
             "--sync-option=CreateNamespace=true",
             "--sync-policy=automated",
@@ -44,20 +44,20 @@ def deploy_guestbook(cluster):
             print(line)
 
 
-def wait_until_guestbook_is_healthy(cluster):
-    print("Waiting application guestbook to be healthy")
+def wait_until_guestbook_is_healthy(hub, cluster):
+    print(f"Waiting application guestbook-{cluster} to be healthy")
     kubectl.wait(
         "application",
-        "guestbook",
+        f"guestbook-{cluster}",
         "--for=jsonpath={.status.health.status}=Healthy",
         "--namespace=argocd",
         "--timeout=60s",
-        context=cluster,
+        context=hub,
     )
 
 
-def undeploy_guestbook(cluster):
-    print("Deleting application guestbook")
+def undeploy_guestbook(hub, cluster):
+    print(f"Deleting application guestbook-{cluster}")
     # need use KUBECONFIG env, switch to hub cluster argocd ns first,
     # otherwise will hit argocd command bug
     # see https://github.com/argoproj/argo-cd/issues/14167
@@ -68,12 +68,17 @@ def undeploy_guestbook(cluster):
             "set-context",
             "--current",
             "--namespace=argocd",
-            "--kubeconfig",
-            kubeconfig,
+            f"--kubeconfig={kubeconfig}",
         )
 
         for line in commands.watch(
-            "argocd", "app", "delete", "guestbook", "--yes", "--wait", env=env
+            "argocd",
+            "app",
+            "delete",
+            f"guestbook-{cluster}",
+            "--yes",
+            "--wait",
+            env=env,
         ):
             print(line)
 
@@ -84,8 +89,13 @@ if len(sys.argv) != 4:
     print(f"Usage: {sys.argv[0]} hub cluster1 cluster2")
     sys.exit(1)
 
-hub = sys.argv[1]
+hub, *clusters = sys.argv[1:]
 
-deploy_guestbook(hub)
-wait_until_guestbook_is_healthy(hub)
-undeploy_guestbook(hub)
+for cluster in clusters:
+    deploy_guestbook(hub, cluster)
+
+for cluster in clusters:
+    wait_until_guestbook_is_healthy(hub, cluster)
+
+for cluster in clusters:
+    undeploy_guestbook(hub, cluster)
