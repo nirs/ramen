@@ -1,6 +1,6 @@
 #!/bin/sh
 
-env_file=envs/regional-dr.yaml
+env_file=${1:-envs/regional-dr.yaml}
 attempts=10
 delay_seconds=60
 
@@ -13,7 +13,7 @@ echo "$(date) Activating virtual environment"
 source ../venv
 
 for i in $(seq 1 $attempts); do
-	echo "$(date) Refreshing drenv cache (attempt $i/$attempts)"
+	echo "$(date) Refreshing drenv cache for $env_file (attempt $i/$attempts)"
 	drenv cache -v "$env_file" && exit 0
 	sleep $delay_seconds
 done
