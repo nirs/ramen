@@ -37,12 +37,12 @@ _PLATFORM_DEFAULTS = {
     "darwin": {
         VM: {
             "x86_64": "hyperkit",
-            "arm64": "",
+            "arm64": "qemu",
         },
         CONTAINER: "podman",
         SHARED_NETWORK: {
             "x86_64": "",
-            "arm64": "",
+            "arm64": "socket_vmnet",
         },
     },
 }
