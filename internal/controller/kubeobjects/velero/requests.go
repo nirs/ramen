@@ -13,6 +13,7 @@ package velero
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	pkgerrors "github.com/pkg/errors"
@@ -232,28 +233,27 @@ func backupDummyStatusProcessAndRestore(
 	restoreName string,
 	labels map[string]string,
 ) (*velero.Restore, error) {
-	backupStatusLog(backup, w.log)
-
 	switch backup.Status.Phase {
 	case velero.BackupPhaseCompleted,
 		velero.BackupPhasePartiallyFailed,
 		velero.BackupPhaseFailed:
-		return backupRestore(
-			backup, w,
-			recoverSpec,
-			restoreName,
-			labels,
-		)
+		w.log.Info("Dummy backup ready for restore", "phase", backup.Status.Phase)
+		return backupRestore(backup, w, recoverSpec, restoreName, labels)
+
 	case velero.BackupPhaseNew,
 		velero.BackupPhaseInProgress,
 		velero.BackupPhaseUploading,
 		velero.BackupPhaseUploadingPartialFailure,
 		velero.BackupPhaseDeleting:
-		return nil, kubeobjects.RequestProcessingErrorCreate("backup" + string(backup.Status.Phase))
+		return nil, kubeobjects.RequestProcessingErrorCreate(
+			fmt.Sprintf("dummy backup is not ready for restore (phase: %q)", backup.Status.Phase))
+
 	case velero.BackupPhaseFailedValidation:
-		return nil, errors.New("backup" + string(backup.Status.Phase))
+		return nil, fmt.Errorf("dummay backup failed validation: %s", backup.Status.ValidationErrors)
+
 	default:
-		return nil, kubeobjects.RequestProcessingErrorCreate("backup.status.phase absent")
+		return nil, kubeobjects.RequestProcessingErrorCreate(
+			fmt.Sprintf("unexpected dummay backup status.phase: %q", backup.Status.Phase))
 	}
 }
 
@@ -276,20 +276,44 @@ func restoreStatusProcess(
 	restore *velero.Restore,
 	log logr.Logger,
 ) error {
-	restoreStatusLog(restore, log)
-
 	switch restore.Status.Phase {
 	case velero.RestorePhaseCompleted:
+		details := []any{"warnings", restore.Status.Warnings}
+		if restore.Status.StartTimestamp != nil {
+			details = append(details, "start", restore.Status.StartTimestamp)
+		}
+		if restore.Status.CompletionTimestamp != nil {
+			details = append(details, "finish", restore.Status.CompletionTimestamp)
+		}
+		log.Info("Restore completed", details...)
+
 		return nil
-	case velero.RestorePhaseNew,
-		velero.RestorePhaseInProgress:
-		return kubeobjects.RequestProcessingErrorCreate("restore" + string(restore.Status.Phase))
-	case velero.RestorePhaseFailed,
-		velero.RestorePhaseFailedValidation,
-		velero.RestorePhasePartiallyFailed:
-		return errors.New("restore" + string(restore.Status.Phase))
+
+	case velero.RestorePhaseNew:
+		return kubeobjects.RequestProcessingErrorCreate("restore was not processed yet")
+
+	case velero.RestorePhaseInProgress:
+		details := ""
+		if restore.Status.Progress != nil {
+			details = fmt.Sprintf(" (restored: %v, total: %v)",
+				restore.Status.Progress.ItemsRestored, restore.Status.Progress.TotalItems)
+		}
+
+		return kubeobjects.RequestProcessingErrorCreate("restore in progress" + details)
+
+	case velero.RestorePhasePartiallyFailed:
+		return fmt.Errorf("restore partly failed (errors: %v, warnings: %v)",
+			restore.Status.Errors, restore.Status.Warnings)
+
+	case velero.RestorePhaseFailed:
+		return fmt.Errorf("restore failed: %s", restore.Status.FailureReason)
+
+	case velero.RestorePhaseFailedValidation:
+		return fmt.Errorf("restore failed validation: %s", restore.Status.ValidationErrors)
+
 	default:
-		return kubeobjects.RequestProcessingErrorCreate("restore.status.phase absent")
+		return kubeobjects.RequestProcessingErrorCreate(
+			fmt.Sprintf("unexpected restore status.phase: %q", restore.Status.Phase))
 	}
 }
 
@@ -420,23 +444,31 @@ func backupRealStatusProcess(
 	backup *velero.Backup,
 	log logr.Logger,
 ) error {
+	// XXX remove - we log or return relevant info in the error.
 	backupStatusLog(backup, log)
 
 	switch backup.Status.Phase {
 	case velero.BackupPhaseCompleted:
+		// XXX completion log with start time, finish time, warnings
 		return nil
+
+	// XXX Create unique error for every phase with relevant details.
 	case velero.BackupPhaseNew,
 		velero.BackupPhaseInProgress,
 		velero.BackupPhaseUploading,
 		velero.BackupPhaseUploadingPartialFailure,
 		velero.BackupPhaseDeleting:
 		return kubeobjects.RequestProcessingErrorCreate("backup" + string(backup.Status.Phase))
+
+	// XXX Create unique error for each phase with relevant details.
 	case velero.BackupPhaseFailedValidation,
 		velero.BackupPhasePartiallyFailed,
 		velero.BackupPhaseFailed:
 		return errors.New("backup" + string(backup.Status.Phase))
+
 	default:
-		return kubeobjects.RequestProcessingErrorCreate("backup.status.phase absent")
+		return kubeobjects.RequestProcessingErrorCreate(
+			fmt.Sprintf("unexpected backup status.phase: %q", backup.Status.Phase))
 	}
 }
 
@@ -648,7 +680,6 @@ func backupStatusLog(backup *velero.Backup, log logr.Logger) {
 		"warnings", backup.Status.Warnings,
 		"errors", backup.Status.Errors,
 		"failure", backup.Status.FailureReason,
-		"validation errors", backup.Status.ValidationErrors,
 	)
 
 	if backup.Status.StartTimestamp != nil {
@@ -663,31 +694,6 @@ func backupStatusLog(backup *velero.Backup, log logr.Logger) {
 		log.Info("Items",
 			"to be backed up", backup.Status.Progress.TotalItems,
 			"backed up", backup.Status.Progress.ItemsBackedUp,
-		)
-	}
-}
-
-func restoreStatusLog(restore *velero.Restore, log logr.Logger) {
-	log.Info("Restore",
-		"phase", restore.Status.Phase,
-		"warnings", restore.Status.Warnings,
-		"errors", restore.Status.Errors,
-		"failure", restore.Status.FailureReason,
-		"validation errors", restore.Status.ValidationErrors,
-	)
-
-	if restore.Status.StartTimestamp != nil {
-		log.Info("Restore", "start", restore.Status.StartTimestamp)
-	}
-
-	if restore.Status.CompletionTimestamp != nil {
-		log.Info("Restore", "finish", restore.Status.CompletionTimestamp)
-	}
-
-	if restore.Status.Progress != nil {
-		log.Info("Items",
-			"to be restored", restore.Status.Progress.TotalItems,
-			"restored", restore.Status.Progress.ItemsRestored,
 		)
 	}
 }
