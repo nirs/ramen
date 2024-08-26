@@ -5,10 +5,11 @@ import errno
 import json
 import logging
 import os
+import time
 
 from packaging.version import Version
 
-from . import commands
+from drenv import commands
 
 EXTRA_CONFIG = [
     # When enabled, tells the Kubelet to pull images one at a time. This slows
@@ -33,82 +34,108 @@ def status(profile, output=None):
     return _run("status", profile=profile, output=output)
 
 
-def start(
-    profile,
-    driver=None,
-    container_runtime=None,
-    extra_disks=None,
-    disk_size=None,
-    network=None,
-    nodes=None,
-    cni=None,
-    cpus=None,
-    memory=None,
-    addons=(),
-    service_cluster_ip_range=None,
-    extra_config=None,
-    feature_gates=None,
-    alsologtostderr=False,
-):
+def start(profile, verbose=False):
+    start = time.monotonic()
+    logging.info("[%s] Starting minikube cluster", profile["name"])
+
     args = []
 
-    if driver:
-        args.extend(("--driver", driver))
-    if container_runtime:
-        args.extend(("--container-runtime", container_runtime))
-    if extra_disks:
-        args.extend(("--extra-disks", str(extra_disks)))
-    if disk_size:
-        args.extend(("--disk-size", disk_size))  # "4g"
-    if network:
-        args.extend(("--network", network))
-    if nodes:
-        args.extend(("--nodes", str(nodes)))
-    if cni:
-        args.extend(("--cni", cni))
-    if cpus:
-        args.extend(("--cpus", str(cpus)))
-    if memory:
-        args.extend(("--memory", memory))
-    if addons:
-        args.extend(("--addons", ",".join(addons)))
-    if service_cluster_ip_range:
-        args.extend(("--service-cluster-ip-range", service_cluster_ip_range))
+    if profile["driver"]:
+        args.extend(("--driver", profile["driver"]))
+
+    if profile["container_runtime"]:
+        args.extend(("--container-runtime", profile["container_runtime"]))
+
+    if profile["extra_disks"]:
+        args.extend(("--extra-disks", str(profile["extra_disks"])))
+
+    if profile["disk_size"]:
+        args.extend(("--disk-size", profile["disk_size"]))  # "4g"
+
+    if profile["network"]:
+        args.extend(("--network", profile["network"]))
+
+    if profile["nodes"]:
+        args.extend(("--nodes", str(profile["nodes"])))
+
+    if profile["cni"]:
+        args.extend(("--cni", profile["cni"]))
+
+    if profile["cpus"]:
+        args.extend(("--cpus", str(profile["cpus"])))
+
+    if profile["memory"]:
+        args.extend(("--memory", profile["memory"]))
+
+    if profile["addons"]:
+        args.extend(("--addons", ",".join(profile["addons"])))
+
+    if profile["service_cluster_ip_range"]:
+        args.extend(("--service-cluster-ip-range", profile["service_cluster_ip_range"]))
 
     for pair in EXTRA_CONFIG:
         args.extend(("--extra-config", pair))
 
-    if extra_config:
-        for pair in extra_config:
+    if profile["extra_config"]:
+        for pair in profile["extra_config"]:
             args.extend(("--extra-config", pair))
 
-    if feature_gates:
+    if profile["feature_gates"]:
         # Unlike --extra-config this requires one comma separated value.
-        args.extend(("--feature-gates", ",".join(feature_gates)))
+        args.extend(("--feature-gates", ",".join(profile["feature_gates"])))
 
-    if alsologtostderr:
+    if verbose:
         args.append("--alsologtostderr")
 
     # TODO: Use --interactive=false when the bug is fixed.
     # https://github.com/kubernetes/minikube/issues/19518
 
-    _watch("start", *args, profile=profile)
+    _watch("start", *args, profile=profile["name"])
+
+    logging.info(
+        "[%s] Cluster started in %.2f seconds",
+        profile["name"],
+        time.monotonic() - start,
+    )
 
 
-def stop(profile):
-    _watch("stop", profile=profile)
+def stop(name):
+    start = time.monotonic()
+    logging.info("[%s] Stopping cluster", name)
+    _watch("stop", profile=name)
+    logging.info(
+        "[%s] Cluster stopped in %.2f seconds",
+        name,
+        time.monotonic() - start,
+    )
 
 
-def delete(profile):
-    _watch("delete", profile=profile)
+def delete(name):
+    start = time.monotonic()
+    logging.info("[%s] Deleting cluster", name)
+    _watch("delete", profile=name)
+    logging.info(
+        "[%s] Cluster deleted in %.2f seconds",
+        name,
+        time.monotonic() - start,
+    )
 
 
-def cp(profile, src, dst):
-    _watch("cp", src, dst, profile=profile)
+def cp(name, src, dst):
+    _watch("cp", src, dst, profile=name)
 
 
-def ssh(profile, command):
-    _watch("ssh", command, profile=profile)
+def ssh(name, command):
+    _watch("ssh", command, profile=name)
+
+
+def exists(name):
+    out = profile("list", output="json")
+    profiles = json.loads(out)
+    for p in profiles["valid"]:
+        if p["Name"] == name:
+            return True
+    return False
 
 
 def setup_files():
@@ -125,7 +152,7 @@ def setup_files():
     _setup_systemd_resolved(version)
 
 
-def load_files(profile):
+def load_files(name):
     """
     Load configuration done in setup_files() before the minikube cluster was
     started.
@@ -133,8 +160,8 @@ def load_files(profile):
     Must be called after the cluster is started, before running any addon. Not
     need when starting a stopped cluster.
     """
-    _load_sysctl(profile)
-    _load_systemd_resolved(profile)
+    _load_sysctl(name)
+    _load_systemd_resolved(name)
 
 
 def cleanup_files():
@@ -176,11 +203,11 @@ fs.inotify.max_user_watches = 65536
     _write_file(path, data)
 
 
-def _load_sysctl(profile):
+def _load_sysctl(name):
     if not os.path.exists(_sysctl_drenv_conf()):
         return
-    logging.debug("[%s] Loading drenv sysctl configuration", profile)
-    ssh(profile, "sudo sysctl -p /etc/sysctl.d/99-drenv.conf")
+    logging.debug("[%s] Loading drenv sysctl configuration", name)
+    ssh(name, "sudo sysctl -p /etc/sysctl.d/99-drenv.conf")
 
 
 def _sysctl_drenv_conf():
@@ -209,11 +236,11 @@ DNSSEC=no
     _write_file(path, data)
 
 
-def _load_systemd_resolved(profile):
+def _load_systemd_resolved(name):
     if not os.path.exists(_systemd_resolved_drenv_conf()):
         return
-    logging.debug("[%s] Loading drenv systemd-resolved configuration", profile)
-    ssh(profile, "sudo systemctl restart systemd-resolved.service")
+    logging.debug("[%s] Loading drenv systemd-resolved configuration", name)
+    ssh(name, "sudo systemctl restart systemd-resolved.service")
 
 
 def _systemd_resolved_drenv_conf():

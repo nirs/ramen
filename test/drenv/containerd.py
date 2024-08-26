@@ -6,8 +6,8 @@ import tempfile
 
 import toml
 
-from . import minikube
 from . import patch
+from . providers import minikube
 
 
 def configure(profile):

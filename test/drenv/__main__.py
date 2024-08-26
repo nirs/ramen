@@ -22,7 +22,7 @@ from . import commands
 from . import containerd
 from . import envfile
 from . import kubectl
-from . import minikube
+from . import providers
 from . import ramen
 from . import shutdown
 
@@ -114,8 +114,8 @@ def parse_args():
     add_command(sp, "dump", do_dump, help="dump an environment yaml")
 
     add_command(sp, "clear", do_clear, help="cleared cached resources", envfile=False)
-    add_command(sp, "setup", do_setup, help="setup minikube for drenv", envfile=False)
-    add_command(sp, "cleanup", do_cleanup, help="cleanup minikube", envfile=False)
+    add_command(sp, "setup", do_setup, help="setup host for drenv", envfile=False)
+    add_command(sp, "cleanup", do_cleanup, help="cleanup host", envfile=False)
 
     return parser.parse_args()
 
@@ -183,13 +183,19 @@ def handle_termination_signal(signo, frame):
 
 
 def do_setup(args):
-    logging.info("[main] Setting up minikube for drenv")
-    minikube.setup_files()
+    env = load_env(args)
+    for name in set(p["provider"] for p in env["profiles"]):
+        logging.info("[main] Setting up '%s' for drenv", name)
+        provider = providers.get(name)
+        provider.setup_files()
 
 
 def do_cleanup(args):
-    logging.info("[main] Cleaning up minikube")
-    minikube.cleanup_files()
+    env = load_env(args)
+    for name in set(p["provider"] for p in env["profiles"]):
+        logging.info("[main] Cleaning up '%s' for drenv", name)
+        provider = providers.get(name)
+        provider.cleanup_files()
 
 
 def do_clear(args):
@@ -354,15 +360,16 @@ def start_cluster(profile, hooks=(), args=None, **options):
     if profile["external"]:
         logging.debug("[%s] Skipping external cluster", profile["name"])
     else:
-        is_restart = minikube_profile_exists(profile["name"])
-        start_minikube_cluster(profile, verbose=args.verbose)
+        provider = providers.get(profile["provider"])
+        is_restart = provider.exists(profile["name"])
+        provider.start(profile, verbose=args.verbose)
         if profile["containerd"]:
             logging.info("[%s] Configuring containerd", profile["name"])
             containerd.configure(profile)
         if is_restart:
             restart_failed_deployments(profile)
         else:
-            minikube.load_files(profile["name"])
+            provider.load_files(profile["name"])
 
     if hooks:
         execute(
@@ -390,79 +397,21 @@ def stop_cluster(profile, hooks=(), **options):
     if profile["external"]:
         logging.debug("[%s] Skipping external cluster", profile["name"])
     elif cluster_status != cluster.UNKNOWN:
-        stop_minikube_cluster(profile)
+        provider = providers.get(profile["provider"])
+        provider.stop(profile["name"])
 
 
 def delete_cluster(profile, **options):
     if profile["external"]:
         logging.debug("[%s] Skipping external cluster", profile["name"])
     else:
-        delete_minikube_cluster(profile)
+        provider = providers.get(profile["provider"])
+        provider.delete(profile["name"])
 
     profile_config = drenv.config_dir(profile["name"])
     if os.path.exists(profile_config):
         logging.info("[%s] Removing config %s", profile["name"], profile_config)
         shutil.rmtree(profile_config)
-
-
-def minikube_profile_exists(name):
-    out = minikube.profile("list", output="json")
-    profiles = json.loads(out)
-    for profile in profiles["valid"]:
-        if profile["Name"] == name:
-            return True
-    return False
-
-
-def start_minikube_cluster(profile, verbose=False):
-    start = time.monotonic()
-    logging.info("[%s] Starting minikube cluster", profile["name"])
-
-    minikube.start(
-        profile["name"],
-        driver=profile["driver"],
-        container_runtime=profile["container_runtime"],
-        extra_disks=profile["extra_disks"],
-        disk_size=profile["disk_size"],
-        network=profile["network"],
-        nodes=profile["nodes"],
-        cni=profile["cni"],
-        cpus=profile["cpus"],
-        memory=profile["memory"],
-        addons=profile["addons"],
-        service_cluster_ip_range=profile["service_cluster_ip_range"],
-        extra_config=profile["extra_config"],
-        feature_gates=profile["feature_gates"],
-        alsologtostderr=verbose,
-    )
-
-    logging.info(
-        "[%s] Cluster started in %.2f seconds",
-        profile["name"],
-        time.monotonic() - start,
-    )
-
-
-def stop_minikube_cluster(profile):
-    start = time.monotonic()
-    logging.info("[%s] Stopping cluster", profile["name"])
-    minikube.stop(profile["name"])
-    logging.info(
-        "[%s] Cluster stopped in %.2f seconds",
-        profile["name"],
-        time.monotonic() - start,
-    )
-
-
-def delete_minikube_cluster(profile):
-    start = time.monotonic()
-    logging.info("[%s] Deleting cluster", profile["name"])
-    minikube.delete(profile["name"])
-    logging.info(
-        "[%s] Cluster deleted in %.2f seconds",
-        profile["name"],
-        time.monotonic() - start,
-    )
 
 
 def restart_failed_deployments(profile, initial_wait=30):
