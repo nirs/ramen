@@ -116,6 +116,7 @@ def watch(
     timeout=None,
     env=None,
     stderr=subprocess.PIPE,
+    process_group=None,
 ):
     """
     Run command args, iterating over lines read from the child process stdout.
@@ -159,6 +160,7 @@ def watch(
                 stdout=subprocess.PIPE,
                 stderr=stderr,
                 env=env,
+                process_group=process_group,  # python 3.11+
             )
         except OSError as e:
             raise Error(args, f"Could not execute: {e}").with_exception(e)
