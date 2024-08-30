@@ -20,6 +20,13 @@ containerd:
   system: true
   user: false
 
+# We don't need port forwarding since we always access the VM via the shared
+# network. Regardless, port 22 is always forwarded via the user network.
+portForwards:
+  - guestPortRange: [1, 65535]
+    guestIP: "0.0.0.0"
+    ignore: true
+
 provision:
 
   # See <https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/>
