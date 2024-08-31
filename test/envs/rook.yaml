@@ -22,7 +22,7 @@ templates:
           - name: rook-cluster
           - name: rook-toolbox
           - name: rook-pool
-          - name: rook-cephfs
+      # - name: rook-cephfs
       - addons:
           - name: csi-addons
 
