@@ -3,9 +3,13 @@
 
 import concurrent.futures
 import os
+import platform
+import subprocess
 import tempfile
 
 from drenv import kubectl
+from drenv import commands
+
 from . import command
 
 IMAGE = "quay.io/ramendr/ramen-operator:latest"
@@ -42,9 +46,7 @@ def run(args):
             futures = []
 
             if env["hub"]:
-                f = executor.submit(
-                    deploy, args, env["hub"], tar, "hub", platform="k8s"
-                )
+                f = executor.submit(deploy, args, env["hub"], tar, "hub", distro="k8s")
                 futures.append(f)
 
             for cluster in env["clusters"]:
@@ -55,12 +57,19 @@ def run(args):
                 f.result()
 
 
-def deploy(args, cluster, tar, deploy_type, platform="", timeout=120):
+def deploy(args, cluster, tar, deploy_type, distro="", timeout=120):
     command.info("Loading image in cluster '%s'", cluster)
-    command.watch("minikube", "--profile", cluster, "image", "load", tar)
+    # TODO: move to new drenv command.
+    system = platform.system().lower()
+    if system == "linux":
+        minikube_load(cluster, tar)
+    elif system == "darwin":
+        lima_load(cluster, tar)
+    else:
+        raise RuntimeError(f"Don't know how to load image on {system}")
 
     command.info("Deploying ramen operator in cluster '%s'", cluster)
-    overlay = os.path.join(args.source_dir, f"config/{deploy_type}/default", platform)
+    overlay = os.path.join(args.source_dir, f"config/{deploy_type}/default", distro)
     yaml = kubectl.kustomize(overlay, load_restrictor="LoadRestrictionsNone")
     kubectl.apply("--filename=-", input=yaml, context=cluster, log=command.debug)
 
@@ -74,3 +83,37 @@ def deploy(args, cluster, tar, deploy_type, platform="", timeout=120):
         context=cluster,
         log=command.debug,
     )
+
+
+def minikube_load(cluster, tar):
+    command.watch("minikube", "--profile", cluster, "image", "load", tar)
+
+
+def lima_load(cluster, tar):
+    cmd = [
+        "limactl",
+        "shell",
+        cluster,
+        "sudo",
+        "nerdctl",
+        "--namespace",
+        "k8s.io",
+        "load",
+    ]
+    command.debug("Running %s", cmd)
+    with open(tar) as f:
+        cp = subprocess.run(
+            cmd,
+            stdin=f,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        error = cp.stderr.decode(errors="replace")
+        if cp.returncode != 0:
+            raise commands.Error(
+                cmd,
+                error,
+                exitcode=cp.returncode,
+                output=cp.stdout.decode(errors="replace"),
+            )
+        command.debug("%s", error)
