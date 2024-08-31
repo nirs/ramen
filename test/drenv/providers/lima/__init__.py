@@ -13,7 +13,7 @@ from drenv import commands
 from drenv import kubeconfig
 from drenv import yaml
 
-LIMACTL = "limactl"
+LIMACTL = "/Users/nsoffer/src/lima/_output/bin/limactl"
 
 # Important lima statuses
 RUNNING = "Running"
@@ -234,15 +234,7 @@ def _create_cluster(profile, config):
 
 
 def _start_cluster(profile):
-    # Start limactl in a new process group to prevnet killing limactl hostagent on drenv shutdown.
-    # Should be fixed in lima, but this should be good enough for now.
-    _watch(
-        LIMACTL,
-        "start",
-        profile["name"],
-        context=profile["name"],
-        process_group=0,
-    )
+    _watch(LIMACTL, "start", profile["name"], context=profile["name"])
 
 
 def _stop_cluster(profile):
