@@ -18,6 +18,7 @@ from . import cache
 from . import cluster
 from . import commands
 from . import envfile
+from . import health
 from . import kubectl
 from . import providers
 from . import ramen
@@ -364,6 +365,7 @@ def start_cluster(profile, hooks=(), args=None, **options):
     provider.configure(profile, existing=existing)
 
     if existing:
+        health.wait_until_ready(profile)
         restart_failed_deployments(profile)
 
     if hooks:
