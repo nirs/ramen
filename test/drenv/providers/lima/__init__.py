@@ -265,15 +265,28 @@ def _delete_disk(profile, disk):
 
 
 def _run(*args, context="lima"):
-    logging.debug("[%s] Running %s", context, args)
-    return commands.run(*args)
+    cmd = [*args, "--log-format", "json"]
+    logging.debug("[%s] Running %s", context, cmd)
+    return commands.run(*cmd)
 
 
 def _watch(*args, process_group=None, context="lima"):
-    logging.debug("[%s] Running %s", context, args)
+    cmd = [*args, "--log-format", "json"]
+    logging.debug("[%s] Running %s", context, cmd)
     for line in commands.watch(
-        *args,
+        *cmd,
         stderr=subprocess.STDOUT,
         process_group=process_group,
     ):
-        logging.debug("[%s] %s", context, line)
+        try:
+            info = json.loads(line)
+        except ValueError:
+            # We don't want to crash if limactl has logging bug.
+            continue
+        info.pop("time", None)
+        info.pop("level", None)
+        msg = info.pop("msg", None)
+        if info:
+            logging.debug("[%s] %s %s", context, msg, info)
+        else:
+            logging.debug("[%s] %s", context, msg)
