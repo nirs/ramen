@@ -12,7 +12,8 @@ from drenv import cluster as drenv_cluster
 from drenv import kubectl
 from drenv import subctl
 
-VERSION = "0.17.0"
+# Use defult version for subctl.
+VERSION = None
 
 NAMESPACE = "submariner-operator"
 
