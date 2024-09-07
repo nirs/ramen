@@ -28,7 +28,15 @@ def deploy_broker(context, globalnet=False, broker_info=None, version=None, log=
         shutil.move(BROKER_INFO, broker_info)
 
 
-def join(broker_info, context, clusterid, cable_driver=None, version=None, log=print):
+def join(
+    broker_info,
+    context,
+    clusterid,
+    cable_driver=None,
+    natt=True,
+    version=None,
+    log=print,
+):
     """
     Run subctl join ... logging progress messages.
     """
@@ -42,6 +50,8 @@ def join(broker_info, context, clusterid, cable_driver=None, version=None, log=p
     ]
     if cable_driver:
         args.extend(("--cable-driver", cable_driver))
+    if not natt:
+        args.append("--natt=false")
     if version:
         args.append(f"--version={version}")
     if platform.system().lower() == "darwin":
