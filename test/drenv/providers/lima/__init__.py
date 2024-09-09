@@ -307,10 +307,19 @@ def _watch(*args, stdin=None, context="lima"):
         except ValueError:
             # We don't want to crash if limactl has logging bug.
             continue
+        log = _log_for(info)
         info.pop("time", None)
         info.pop("level", None)
         msg = info.pop("msg", None)
         if info:
-            logging.debug("[%s] %s %s", context, msg, info)
+            log("[%s] %s %s", context, msg, info)
         else:
-            logging.debug("[%s] %s", context, msg)
+            log("[%s] %s", context, msg)
+
+
+def _log_for(info):
+    level = info.get("level")
+    if level == "error":
+        return logging.error
+    else:
+        return logging.debug
