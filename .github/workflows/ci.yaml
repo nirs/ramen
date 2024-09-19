@@ -186,8 +186,8 @@ jobs:
     strategy:
       matrix:
         os:
-          # arm64, 3 cpus (M1), 7 GiB RAM, no nested virtalization.
-          - macos-14
+          # amd64, 4 cpus, 14 GiB RAM, nested virtalization
+          - macos-13
         python-version:
           - "3.12"
     runs-on: ${{ matrix.os }}
@@ -195,13 +195,52 @@ jobs:
       - name: Checkout ramen
         uses: actions/checkout@v4
 
+      - name: Checkout lima
+        uses: actions/checkout@v4
+        with:
+          repository: lima-vm/lima
+          path: lima
+
+      - name: Checkout socket_vmnet
+        uses: actions/checkout@v4
+        with:
+          repository: lima-vm/socket_vmnet
+          path: socket_vmnet
+
       - name: Setup python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Setup go for lima
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"  # used by lima-ci
+
       - name: Install Homebrew packages
-        run: brew install kubectl
+        run: brew install kubectl tree
+
+      - name: Install lima
+        run: |
+          cd lima
+          make minimal
+          tree _output
+          sudo make install
+          limactl --version
+
+      - name: Install socket_vmnet
+        run: |
+          cd socket_vmnet
+          make
+          sudo make install.bin
+          sudo make install.launchd
+          /opt/socket_vmnet/bin/socket_vmnet --version
+
+      - name: Allow bootpd to receive incoming connections
+        run: |
+          sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add /usr/libexec/bootpd
+          sudo /usr/libexec/ApplicationFirewall/socketfilterfw --unblock /usr/libexec/bootpd
+          sudo /usr/libexec/ApplicationFirewall/socketfilterfw --list
 
       - name: Install python packages
         run: pip install -r requirements.txt
@@ -224,13 +263,33 @@ jobs:
         run: make black
         working-directory: test
 
+      # Strting the cluster takes about 20 minutes.
+      - name: Start test cluster
+        run: make cluster TIMEOUT=1500
+        working-directory: test
+        timeout-minutes: 25
+
+      - name: Show logs on error
+        if: failure()
+        run: |
+          export DIR=$(limactl list --format '{{.Dir}}')
+          # Don't fail entire step if one log is missing.
+          for f in ha.stdout.log ha.stderr.log copied-from-guest/kubectl.yaml; do
+            echo
+            echo "=== $DIR/$f ==="
+            cat $DIR/$f || true
+          done
+
       - name: Run tests
-        # We cannot run the test cluster on macOS.
-        run: make unit-test
+        run: make test
         working-directory: test
 
       - name: Report test coverage
         run: make coverage
+        working-directory: test
+
+      - name: Clean up
+        run: make clean
         working-directory: test
 
   ramenctl:

@@ -198,7 +198,9 @@ probes:
     script: |
       #!/bin/bash
       set -eux -o pipefail
-      if ! timeout 600s bash -c "until kubectl get --raw /readyz 2>/dev/null; do sleep 3; done"; then
+      # Using very long timeout to make this work on github actions. When
+      # running locally this check complets in few seconds.
+      if ! timeout 15m bash -c "until kubectl get --raw /readyz 2>/dev/null; do sleep 3; done"; then
         echo >&2 "kubernetes cluster is not ready yet"
         exit 1
       fi
@@ -207,7 +209,9 @@ probes:
     script: |
       #!/bin/bash
       set -eux -o pipefail
-      kubectl rollout status deploy coredns -n kube-system --timeout=180s
+      # Using very long timeout to make this work on github actions. When
+      # running locally this check complets 30 seconds.
+      kubectl rollout status deploy coredns -n kube-system --timeout=9m
 
 copyToHost:
   - guest: "/etc/kubernetes/admin.conf"
