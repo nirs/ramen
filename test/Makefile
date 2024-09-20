@@ -5,6 +5,9 @@
 # hardware acceleration for VMs.
 DRIVER ?= vm
 
+# drenv start timeout in seconds
+TIMEOUT ?= 600
+
 env := envs/$(DRIVER).yaml
 prefix := drenv-test-
 
@@ -62,7 +65,7 @@ coverage-clean:
 	rm -f .coverage
 
 cluster:
-	drenv start --name-prefix $(prefix) $(env) -v
+	drenv start --name-prefix $(prefix) $(env) --verbose --timeout $(TIMEOUT)
 
 clean:
 	drenv delete --name-prefix $(prefix) $(env)
