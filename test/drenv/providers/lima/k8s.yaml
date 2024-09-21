@@ -194,20 +194,20 @@ probes:
     hint: |
       The k8s kubeconfig file has not yet been created.
 
-  - description: "kubernetes cluster to be running"
+  - description: "kubernetes cluster is ready"
     script: |
       #!/bin/bash
       set -eux -o pipefail
-      if ! timeout 300s bash -c "until kubectl version >/dev/null 2>&1; do sleep 3; done"; then
-        echo >&2 "kubernetes cluster is not up and running yet"
+      if ! timeout 600s bash -c "until kubectl get --raw /readyz 2>/dev/null; do sleep 3; done"; then
+        echo >&2 "kubernetes cluster is not ready yet"
         exit 1
       fi
 
-  - description: "coredns deployment to be running"
+  - description: "coredns deployment is rolled out"
     script: |
       #!/bin/bash
       set -eux -o pipefail
-      kubectl wait -n kube-system --timeout=180s --for=condition=available deploy coredns
+      kubectl rollout status deploy coredns -n kube-system --timeout=180s
 
 copyToHost:
   - guest: "/etc/kubernetes/admin.conf"
