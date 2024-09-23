@@ -446,6 +446,8 @@ func (v *VRGInstance) preparePVCForVRDeletion(pvc *corev1.PersistentVolumeClaim,
 
 	delete(pv.Annotations, pvcVRAnnotationArchivedKey)
 
+	log.Info("Deleting ramen annotations from PersistentVolume", "pv", pv.Name)
+
 	if err := v.reconciler.Update(v.ctx, &pv); err != nil {
 		log.Error(err, "Failed to update PersistentVolume for VR deletion")
 
@@ -461,6 +463,8 @@ func (v *VRGInstance) preparePVCForVRDeletion(pvc *corev1.PersistentVolumeClaim,
 	delete(pvc.Annotations, pvcVRAnnotationArchivedKey)
 
 	log1 := log.WithValues("owner removed", ownerRemoved, "finalizer removed", finalizerRemoved)
+
+	log1.Info("Deleting ramen annotations and finallizers from PersistentVolumeClaim")
 
 	if err := v.reconciler.Update(v.ctx, pvc); err != nil {
 		log1.Error(err, "Failed to update PersistentVolumeClaim for VR deletion")
@@ -1805,6 +1809,8 @@ func (v *VRGInstance) deleteVR(vrNamespacedName types.NamespacedName, log logr.L
 			Namespace: vrNamespacedName.Namespace,
 		},
 	}
+
+	v.log.Info("Deleting VolumeReplication resource %s/%s", vrNamespacedName.Namespace, vrNamespacedName.Name)
 
 	err := v.reconciler.Delete(v.ctx, cr)
 	if err != nil {
