@@ -5,7 +5,9 @@
 apiVersion: replication.storage.openshift.io/v1alpha1
 kind: VolumeReplicationClass
 metadata:
-  name: vrc-sample
+  annotatinos:
+    replication.storage.openshift.io/is-default-class: "true"
+  name: vrc-default
 spec:
   provisioner: rook-ceph.rbd.csi.ceph.com
   parameters:

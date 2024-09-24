@@ -222,10 +222,10 @@ def restart_rbd_mirror_daemon(cluster):
     )
 
 
-def deploy_vrc_sample(cluster):
+def deploy_vrc_default(cluster):
     print(f"Applying vrc sample in cluster '{cluster}'")
     kubectl.apply(
-        "--filename=vrc-sample.yaml",
+        "--filename=vrc-default.yaml",
         "--namespace=rook-ceph",
         context=cluster,
     )
@@ -274,8 +274,8 @@ log_blocklist(cluster2)
 wait_until_pool_mirroring_is_healthy(cluster1)
 wait_until_pool_mirroring_is_healthy(cluster2)
 
-deploy_vrc_sample(cluster1)
-deploy_vrc_sample(cluster2)
+deploy_vrc_default(cluster1)
+deploy_vrc_default(cluster2)
 
 deploy_vgrc_sample(cluster1)
 deploy_vgrc_sample(cluster2)
