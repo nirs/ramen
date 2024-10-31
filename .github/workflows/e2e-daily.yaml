@@ -7,10 +7,10 @@
 ---
 name: E2E Daily
 
-on:  # yamllint disable-line rule:truthy
+on: # yamllint disable-line rule:truthy
   # Run every day on 03:00.
   schedule:
-    - cron: '0 3 * * *'
+    - cron: "0 3 * * *"
   # Allow manual run.
   # (Actions -> E2E Daily -> Run workflow)
   workflow_dispatch:
