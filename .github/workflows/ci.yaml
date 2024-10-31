@@ -18,7 +18,7 @@ on: # yamllint disable-line rule:truthy
     - cron: "0 0 * * *"
 
 env:
-  # Values can be overriden by repository variables.
+  # Values can be overridden by repository variables.
   IMAGE_TAG_BASE: ${{ vars.IMAGE_TAG_BASE || 'quay.io/ramendr/ramen' }}
   IMAGE_REPOSITORY: ${{ vars.IMAGE_REPOSITORY || 'ramendr' }}
   IMAGE_NAME: ${{ vars.IMAGE_NAME || 'ramen' }}

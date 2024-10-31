@@ -76,8 +76,8 @@ jobs:
         working-directory: test
         run: drenv gather --directory ${{ env.GATHER_DIR }} --name-prefix ${{ env.NAME_PREFIX }} envs/regional-dr.yaml
 
-      # Tar manually to work around github limitations with special chracters (:)
-      # in file names, and getting much smaller archives comapred with zip (6m vs
+      # Tar manually to work around github limitations with special characters (:)
+      # in file names, and getting much smaller archives compared with zip (6m vs
       # 12m).
       # https://github.com/actions/upload-artifact/issues/546
       - name: Archive gathered data
