@@ -83,6 +83,10 @@ func (a ApplicationSet) GetName() string {
 	return "Appset"
 }
 
+func (a ApplicationSet) GetNamespace(_ types.Workload) string {
+	return util.ArgocdNamespace
+}
+
 func (a ApplicationSet) IsWorkloadSupported(w types.Workload) bool {
 	return true
 }

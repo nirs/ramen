@@ -18,6 +18,10 @@ func (s Subscription) GetName() string {
 	return "Subscr"
 }
 
+func (s Subscription) GetNamespace(w types.Workload) string {
+	return GetCombinedName(s, w)
+}
+
 func (s Subscription) Deploy(ctx types.Context) error {
 	// Generate a Placement for the Workload
 	// Use the global Channel

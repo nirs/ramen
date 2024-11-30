@@ -14,6 +14,10 @@ type Deployer interface {
 	Undeploy(Context) error
 	IsWorkloadSupported(Workload) bool
 	GetName() string
+
+	// Return the namespace for the ramen resources on the hub and managed clusters. The namespace depends on the type of
+	// the deployer and on the workload.
+	GetNamespace(Workload) string
 }
 
 type Workload interface {

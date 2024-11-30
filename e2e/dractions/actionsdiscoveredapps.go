@@ -15,8 +15,8 @@ func EnableProtectionDiscoveredApps(ctx types.Context) error {
 	d := ctx.Deployer()
 	name := ctx.Name()
 	log := ctx.Logger()
-	namespace := GetNamespace(d, w) // this namespace is in hub
-	namespaceInDrCluster := name    // this namespace is in dr clusters
+	namespace := d.GetNamespace(w) // this namespace is in hub
+	namespaceInDrCluster := name   // this namespace is in dr clusters
 
 	log.Info("Protecting workload")
 
@@ -58,11 +58,11 @@ func EnableProtectionDiscoveredApps(ctx types.Context) error {
 // remove DRPC
 // update placement annotation
 func DisableProtectionDiscoveredApps(ctx types.Context) error {
-	name := ctx.Name()
-	log := ctx.Logger()
 	w := ctx.Workload()
 	d := ctx.Deployer()
-	namespace := GetNamespace(d, w) // this namespace is in hub
+	name := ctx.Name()
+	log := ctx.Logger()
+	namespace := d.GetNamespace(w) // this namespace is in hub
 
 	log.Info("Unprotecting workload")
 
@@ -109,8 +109,8 @@ func failoverRelocateDiscoveredApps(ctx types.Context, action ramen.DRAction) er
 	d := ctx.Deployer()
 	name := ctx.Name()
 	log := ctx.Logger()
-	namespace := GetNamespace(d, w) // this namespace is in hub
-	namespaceInDrCluster := name    // this namespace is in dr clusters
+	namespace := d.GetNamespace(w) // this namespace is in hub
+	namespaceInDrCluster := name   // this namespace is in dr clusters
 
 	drpcName := name
 	client := util.Ctx.Hub.CtrlClient
