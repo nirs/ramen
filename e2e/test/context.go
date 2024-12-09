@@ -14,6 +14,9 @@ import (
 	"go.uber.org/zap"
 )
 
+// Make it eaisr to manage namespaces created by the tests.
+const namespacePrefix = "e2e-"
+
 type Context struct {
 	workload types.Workload
 	deployer types.Deployer
@@ -53,7 +56,7 @@ func (c *Context) ManagementNamespace() string {
 }
 
 func (c *Context) AppNamespace() string {
-	return c.name
+	return namespacePrefix + c.name
 }
 
 func (c *Context) Logger() *zap.SugaredLogger {
