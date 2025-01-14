@@ -1,7 +1,10 @@
 # SPDX-FileCopyrightText: The RamenDR authors
 # SPDX-License-Identifier: Apache-2.0
 
+import subprocess
+
 from . import commands
+from . import zap
 
 JSONPATH_NEWLINE = '{"\\n"}'
 
@@ -188,16 +191,27 @@ def watch(
     return commands.watch(*cmd, timeout=timeout)
 
 
-def gather(contexts, namespaces=None, directory=None):
+def gather(contexts, namespaces=None, directory=None, name="gather"):
     """
-    Run kubectl gather plugin.
+    Run kubectl gather plugin, logging gather logs.
     """
-    cmd = ["kubectl", "gather", "--contexts", ",".join(contexts)]
+    cmd = [
+        "kubectl",
+        "gather",
+        "--log-format",
+        "json",
+        "--contexts",
+        ",".join(contexts),
+    ]
     if namespaces:
         cmd.extend(("--namespaces", ",".join(namespaces)))
     if directory:
         cmd.extend(("--directory", directory))
-    commands.run(*cmd)
+
+    # Redirecting stderr to stdout to get the logs. kubectl gather does not
+    # output anytihng to stdout.
+    for line in commands.watch(*cmd, stderr=subprocess.STDOUT):
+        zap.log_json(line, name=name)
 
 
 def _run(cmd, *args, env=None, context=None):
