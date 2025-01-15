@@ -77,23 +77,23 @@ jobs:
         make e2e-rdr
 
     - name: Gather environment data
-      if: failure()
+      if: always()
       working-directory: test
       # Gathering typically takes less than 15 seconds.
       timeout-minutes: 3
-      run: drenv gather --directory ${{ env.GATHER_DIR }} envs/regional-dr.yaml
+      run: drenv gather --directory ${{ env.GATHER_DIR }} envs/regional-dr.yaml --verbose
 
     # Tar manually to work around github limitations with special chracters (:)
     # in file names, and getting much smaller archives comapred with zip (6m vs
     # 12m).
     # https://github.com/actions/upload-artifact/issues/546
     - name: Archive gathered data
-      if: failure()
+      if: always()
       working-directory: test
       run: tar czf ${{ env.GATHER_DIR }}.tar.gz ${{ env.GATHER_DIR }}
 
     - name: Upload artifacts
-      if: failure()
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.GATHER_DIR }}
