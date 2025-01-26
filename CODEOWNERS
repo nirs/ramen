@@ -1,0 +1,42 @@
+# SPDX-FileCopyrightText: The RamenDR authors
+# SPDX-License-Identifier: Apache-2.0
+
+# For supported syntax see docs:
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners if there is no more specific rule.
+*   @ShyamsundarR @BenamarMk
+
+# volrep
+# TODO: second owner
+/internal/controllers/vrg_volrep*.go    @ShyamsundarR
+
+# volsync
+# TODO: second owner
+/internal/controllers/volsync/          @BenamarMk
+/internal/controllers/vrg_volsync*.go   @BenamarMk
+
+# cephfs consistency groups
+# TODO: second owner
+/internal/controllers/cephfscg/     @BenamarMk
+
+# Metrics
+# TODO: second owner
+/docs/metrics.md                    @rakeshgm
+/internal/controllers/metrics.go    @rakeshgm
+/internal/controllers/cel/          @rakeshgm
+
+# Kube object protection
+# TODO: second owner
+/docs/recipe.md                             @raghavendra-talur
+/docs/krp.md                                @raghavendra-talur
+/internal/controllers/kubeobjects/          @raghavendra-talur
+/internal/controllers/vrg_kubeobjects*.go   @raghavendra-talur
+/internal/controllers/vrg_recipe*.go        @raghavendra-talur
+
+# Testing
+/test/                          @nirs @raghavendra-talur
+/e2e/                           @nirs @raghavendra-talur
+/docs/testing.md                @nirs @raghavendra-talur
+/docs/devel-quick-start.md      @nirs @raghavendra-talur
+/docs/user-quick-start.md       @nirs @raghavendra-talur
