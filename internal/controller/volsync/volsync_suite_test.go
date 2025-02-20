@@ -34,6 +34,7 @@ import (
 
 var (
 	logger                         logr.Logger
+	k8sManager                     ctrl.Manager
 	k8sClient                      client.Client
 	testEnv                        *envtest.Environment
 	cancel                         context.CancelFunc
@@ -112,7 +113,7 @@ var _ = BeforeSuite(func() {
 	err = cfgpolicyv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
-	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
+	k8sManager, err = ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
 		Metrics: metrics.Options{
 			BindAddress: "0",
@@ -130,7 +131,10 @@ var _ = BeforeSuite(func() {
 		Expect(err).ToNot(HaveOccurred())
 	}()
 
-	k8sClient = k8sManager.GetClient()
+	k8sClient, err = client.New(cfg, client.Options{
+		Scheme: scheme.Scheme,
+	})
+	Expect(err).ToNot(HaveOccurred())
 
 	// Create dummy storageClass resource to use in tests
 	testStorageClass = &storagev1.StorageClass{

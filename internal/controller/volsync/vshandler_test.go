@@ -87,7 +87,7 @@ var _ = Describe("VolSync Handler - Volume Replication Class tests", func() {
 			var vsHandler *volsync.VSHandler
 
 			BeforeEach(func() {
-				vsHandler = volsync.NewVSHandler(ctx, k8sClient, logger, nil, asyncSpec, "none", "Snapshot", false)
+				vsHandler = volsync.NewVSHandler(ctx, k8sManager.GetClient(), logger, nil, asyncSpec, "none", "Snapshot", false)
 			})
 
 			It("GetVolumeSnapshotClasses() should find all volume snapshot classes", func() {
@@ -116,7 +116,7 @@ var _ = Describe("VolSync Handler - Volume Replication Class tests", func() {
 					},
 				}
 
-				vsHandler = volsync.NewVSHandler(ctx, k8sClient, logger, nil, asyncSpec, "none", "Snapshot", false)
+				vsHandler = volsync.NewVSHandler(ctx, k8sManager.GetClient(), logger, nil, asyncSpec, "none", "Snapshot", false)
 			})
 
 			It("GetVolumeSnapshotClasses() should find matching volume snapshot classes", func() {
@@ -159,7 +159,7 @@ var _ = Describe("VolSync Handler - Volume Replication Class tests", func() {
 					},
 				}
 
-				vsHandler = volsync.NewVSHandler(ctx, k8sClient, logger, nil, asyncSpec, "none", "Snapshot", false)
+				vsHandler = volsync.NewVSHandler(ctx, k8sManager.GetClient(), logger, nil, asyncSpec, "none", "Snapshot", false)
 			})
 
 			It("GetVolumeSnapshotClasses() should find matching volume snapshot classes", func() {
@@ -215,18 +215,14 @@ var _ = Describe("VolSync Handler - Volume Replication Class tests", func() {
 			}
 
 			// Initialize a vshandler
-			vsHandler = volsync.NewVSHandler(ctx, k8sClient, logger, nil, asyncSpec,
+			vsHandler = volsync.NewVSHandler(ctx, k8sManager.GetClient(), logger, nil, asyncSpec,
 				"openshift-storage.cephfs.csi.ceph.com", "Snapshot", false)
 		})
 
 		JustBeforeEach(func() {
 			// Create source PVC in justBeforeEach so it can be modified by tests prior to creation
 			Expect(k8sClient.Create(ctx, testSourcePVC)).To(Succeed())
-
-			// Make sure the pvc is created to avoid any timing issues
-			Eventually(func() error {
-				return k8sClient.Get(ctx, client.ObjectKeyFromObject(testSourcePVC), testSourcePVC)
-			}, maxWait, interval).Should(Succeed())
+			Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(testSourcePVC), testSourcePVC)).To(Succeed())
 
 			// Create an RSSpec from the testSourcePVC
 			protectedPVC := &ramendrv1alpha1.ProtectedPVC{
@@ -324,7 +320,7 @@ var _ = Describe("VolSync_Handler", func() {
 		Expect(ownerCm.GetName()).NotTo(BeEmpty())
 		owner = ownerCm
 
-		vsHandler = volsync.NewVSHandler(ctx, k8sClient, logger, owner, asyncSpec, "none", "Snapshot", false)
+		vsHandler = volsync.NewVSHandler(ctx, k8sManager.GetClient(), logger, owner, asyncSpec, "none", "Snapshot", false)
 	})
 
 	AfterEach(func() {
@@ -387,15 +383,10 @@ var _ = Describe("VolSync_Handler", func() {
 					}
 					Expect(k8sClient.Create(ctx, dummyPSKSecret)).To(Succeed())
 					Expect(dummyPSKSecret.GetName()).NotTo(BeEmpty())
-
-					// Make sure the secret is created to avoid any timing issues
-					Eventually(func() error {
-						return k8sClient.Get(ctx,
-							types.NamespacedName{
-								Name:      dummyPSKSecret.GetName(),
-								Namespace: dummyPSKSecret.GetNamespace(),
-							}, dummyPSKSecret)
-					}, maxWait, interval).Should(Succeed())
+					Expect(k8sClient.Get(ctx, types.NamespacedName{
+						Name:      dummyPSKSecret.GetName(),
+						Namespace: dummyPSKSecret.GetNamespace(),
+					}, dummyPSKSecret)).To(Succeed())
 				})
 
 				Context("When a RS exists for the pvc, failover scenario (primary -> secondary)", func() {
@@ -416,11 +407,7 @@ var _ = Describe("VolSync_Handler", func() {
 							Spec: volsyncv1alpha1.ReplicationSourceSpec{},
 						}
 						Expect(k8sClient.Create(ctx, rs)).To(Succeed())
-
-						// Make sure the replicationsource is created to avoid any timing issues
-						Eventually(func() error {
-							return k8sClient.Get(ctx, client.ObjectKeyFromObject(rs), rs)
-						}, maxWait, interval).Should(Succeed())
+						Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(rs), rs)).To(Succeed())
 
 						// Run ReconcileRD
 						var err error
@@ -445,12 +432,10 @@ var _ = Describe("VolSync_Handler", func() {
 						Expect(err).ToNot(HaveOccurred())
 
 						// RD should be created with name=PVCName
-						Eventually(func() error {
-							return k8sClient.Get(ctx, types.NamespacedName{
-								Name:      rdSpec.ProtectedPVC.Name,
-								Namespace: testNamespace.GetName(),
-							}, createdRD)
-						}, maxWait, interval).Should(Succeed())
+						Expect(k8sClient.Get(ctx, types.NamespacedName{
+							Name:      rdSpec.ProtectedPVC.Name,
+							Namespace: testNamespace.GetName(),
+						}, createdRD)).To(Succeed())
 
 						// Expect the RD should be owned by owner
 						Expect(ownerMatches(createdRD, owner.GetName(), "ConfigMap", true /*should be controller*/)).To(BeTrue())
@@ -551,7 +536,7 @@ var _ = Describe("VolSync_Handler", func() {
 
 				BeforeEach(func() {
 					rdSpec.ProtectedPVC.Namespace = testNamespace.GetName()
-					vsHandler = volsync.NewVSHandler(ctx, k8sClient, logger, owner, asyncSpec, "none", "Direct", false)
+					vsHandler = volsync.NewVSHandler(ctx, k8sManager.GetClient(), logger, owner, asyncSpec, "none", "Direct", false)
 				})
 
 				It("PrecreateDestPVCIfEnabled() should return CopyMethod Snapshot and App PVC name", func() {
@@ -662,7 +647,7 @@ var _ = Describe("VolSync_Handler", func() {
 				})
 			})
 
-			Context("When the psk secret for volsync exists (will be pushed down by drpc from hub", func() {
+			Context("When the psk secret for volsync exists (will be pushed down by drpc from hub)", func() {
 				var dummyPSKSecret *corev1.Secret
 				JustBeforeEach(func() {
 					rsSpec.ProtectedPVC.Namespace = testNamespace.GetName()
@@ -675,14 +660,10 @@ var _ = Describe("VolSync_Handler", func() {
 					}
 					Expect(k8sClient.Create(ctx, dummyPSKSecret)).To(Succeed())
 					Expect(dummyPSKSecret.GetName()).NotTo(BeEmpty())
-
-					// Make sure the secret is created to avoid any timing issues
-					Eventually(func() error {
-						return k8sClient.Get(ctx, types.NamespacedName{
-							Name:      dummyPSKSecret.GetName(),
-							Namespace: dummyPSKSecret.GetNamespace(),
-						}, dummyPSKSecret)
-					}, maxWait, interval).Should(Succeed())
+					Expect(k8sClient.Get(ctx, types.NamespacedName{
+						Name:      dummyPSKSecret.GetName(),
+						Namespace: dummyPSKSecret.GetNamespace(),
+					}, dummyPSKSecret)).To(Succeed())
 				})
 
 				Context("When no running pod is mounting the PVC to be protected", func() {
@@ -693,12 +674,6 @@ var _ = Describe("VolSync_Handler", func() {
 						Expect(err).ToNot(HaveOccurred())
 						Expect(finalSyncCompl).To(BeFalse())
 						Expect(rs).ToNot(BeNil())
-
-						// Ensure replication source is created
-						Eventually(func() error {
-							return k8sClient.Get(ctx,
-								types.NamespacedName{Name: rsSpec.ProtectedPVC.Name, Namespace: testNamespace.GetName()}, createdRS)
-						}, maxWait, interval).Should(Succeed())
 
 						// Consistently continue to synchronize PVC data to a remote location
 						Consistently(func() error {
@@ -722,13 +697,10 @@ var _ = Describe("VolSync_Handler", func() {
 						Expect(rs).ToNot(BeNil())
 
 						// RS should be created with name=PVCName
-						Eventually(func() error {
-							return k8sClient.Get(ctx, types.NamespacedName{
-								Name:      rsSpec.ProtectedPVC.Name,
-								Namespace: testNamespace.GetName(),
-							}, createdRS)
-						}, maxWait, interval).Should(Succeed())
-
+						Expect(k8sClient.Get(ctx, types.NamespacedName{
+							Name:      rsSpec.ProtectedPVC.Name,
+							Namespace: testNamespace.GetName(),
+						}, createdRS)).To(Succeed())
 						Expect(createdRS.Spec.RsyncTLS.StorageClassName).To(Equal(rsSpec.ProtectedPVC.StorageClassName))
 
 						// ReconcileRS should have created the RS - though the pod is not in running phase
@@ -755,12 +727,11 @@ var _ = Describe("VolSync_Handler", func() {
 						Expect(rs).ToNot(BeNil())
 
 						// RS should be created with name=PVCName
-						Eventually(func() error {
-							return k8sClient.Get(ctx, types.NamespacedName{
-								Name:      rsSpec.ProtectedPVC.Name,
-								Namespace: testNamespace.GetName(),
-							}, createdRS)
-						}, maxWait, interval).Should(Succeed())
+						Expect(k8sClient.Get(ctx, types.NamespacedName{
+							Name:      rsSpec.ProtectedPVC.Name,
+							Namespace: testNamespace.GetName(),
+						}, createdRS)).To(Succeed())
+
 						// ReconcileRS should have created the RS - though the pod is not Ready
 						Consistently(func() error {
 							return k8sClient.Get(ctx,
@@ -798,11 +769,6 @@ var _ = Describe("VolSync_Handler", func() {
 							}
 							Expect(k8sClient.Create(ctx, rd)).To(Succeed())
 
-							// Make sure the replicationdestination is created to avoid any timing issues
-							Eventually(func() error {
-								return k8sClient.Get(ctx, client.ObjectKeyFromObject(rd), rd)
-							}, maxWait, interval).Should(Succeed())
-
 							// Run ReconcileRS again - Not running final sync so this should return false
 							finalSyncDone, returnedRS, err := vsHandler.ReconcileRS(rsSpec, false)
 							Expect(err).ToNot(HaveOccurred())
@@ -810,13 +776,11 @@ var _ = Describe("VolSync_Handler", func() {
 							Expect(returnedRS).NotTo(BeNil())
 
 							// RS should be created with name=PVCName
-							Eventually(func() error {
-								return k8sClient.Get(ctx, types.NamespacedName{
-									Name:      rsSpec.ProtectedPVC.Name,
-									Namespace: testNamespace.GetName(),
-								}, createdRS)
-							}, maxWait, interval).Should(Succeed())
-
+							err = k8sClient.Get(ctx, types.NamespacedName{
+								Name:      rsSpec.ProtectedPVC.Name,
+								Namespace: testNamespace.GetName(),
+							}, createdRS)
+							Expect(err).ToNot(HaveOccurred())
 							Expect(createdRS.Spec.RsyncTLS.AccessModes).To(Equal(rsSpec.ProtectedPVC.AccessModes))
 							Expect(createdRS.Spec.RsyncTLS.StorageClassName).To(Equal(rsSpec.ProtectedPVC.StorageClassName))
 						})
@@ -912,13 +876,7 @@ var _ = Describe("VolSync_Handler", func() {
 									},
 								}
 								Expect(k8sClient.Create(ctx, rsPrecreate)).To(Succeed())
-
-								//
-								// Make sure the RS is created
-								//
-								Eventually(func() error {
-									return k8sClient.Get(ctx, client.ObjectKeyFromObject(rsPrecreate), rsPrecreate)
-								}, maxWait, interval).Should(Succeed())
+								Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(rsPrecreate), rsPrecreate)).To(Succeed())
 							})
 
 							It("Should properly update ReplicationSource and return rsInfo", func() {
@@ -1030,11 +988,7 @@ var _ = Describe("VolSync_Handler", func() {
 					},
 				}
 				Expect(k8sClient.Create(ctx, rd)).To(Succeed())
-
-				// Make sure it's been created to avoid timing issues
-				Eventually(func() error {
-					return k8sClient.Get(ctx, client.ObjectKeyFromObject(rd), rd)
-				}, maxWait, interval).Should(Succeed())
+				Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(rd), rd)).To(Succeed())
 			})
 			It("Should fail to ensure PVC", func() {
 				Expect(ensurePVCErr).To(HaveOccurred())
@@ -1352,7 +1306,7 @@ var _ = Describe("VolSync_Handler", func() {
 			}
 			Expect(k8sClient.Create(ctx, otherOwnerCm)).To(Succeed())
 			Expect(otherOwnerCm.GetName()).NotTo(BeEmpty())
-			otherVSHandler := volsync.NewVSHandler(ctx, k8sClient, logger, otherOwnerCm, asyncSpec,
+			otherVSHandler := volsync.NewVSHandler(ctx, k8sManager.GetClient(), logger, otherOwnerCm, asyncSpec,
 				"none", "Snapshot", false)
 
 			for i := 0; i < 2; i++ {
@@ -1381,15 +1335,10 @@ var _ = Describe("VolSync_Handler", func() {
 			}
 			Expect(k8sClient.Create(ctx, dummyPSKSecret)).To(Succeed())
 			Expect(dummyPSKSecret.GetName()).NotTo(BeEmpty())
-
-			// Make sure the secret is created to avoid any timing issues
-			Eventually(func() error {
-				return k8sClient.Get(ctx,
-					types.NamespacedName{
-						Name:      dummyPSKSecret.GetName(),
-						Namespace: dummyPSKSecret.GetNamespace(),
-					}, dummyPSKSecret)
-			}, maxWait, interval).Should(Succeed())
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      dummyPSKSecret.GetName(),
+				Namespace: dummyPSKSecret.GetNamespace(),
+			}, dummyPSKSecret)).To(Succeed())
 
 			dummyPSKSecretOtherOwner := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1399,15 +1348,10 @@ var _ = Describe("VolSync_Handler", func() {
 			}
 			Expect(k8sClient.Create(ctx, dummyPSKSecretOtherOwner)).To(Succeed())
 			Expect(dummyPSKSecretOtherOwner.GetName()).NotTo(BeEmpty())
-
-			// Make sure the secret is created to avoid any timing issues
-			Eventually(func() error {
-				return k8sClient.Get(ctx,
-					types.NamespacedName{
-						Name:      dummyPSKSecretOtherOwner.GetName(),
-						Namespace: dummyPSKSecretOtherOwner.GetNamespace(),
-					}, dummyPSKSecretOtherOwner)
-			}, maxWait, interval).Should(Succeed())
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      dummyPSKSecretOtherOwner.GetName(),
+				Namespace: dummyPSKSecretOtherOwner.GetNamespace(),
+			}, dummyPSKSecretOtherOwner)).To(Succeed())
 
 			for _, rdSpec := range rdSpecList {
 				// create RDs using our vsHandler
@@ -1547,7 +1491,7 @@ var _ = Describe("VolSync_Handler", func() {
 			}
 			Expect(k8sClient.Create(ctx, otherOwnerCm)).To(Succeed())
 			Expect(otherOwnerCm.GetName()).NotTo(BeEmpty())
-			otherVSHandler := volsync.NewVSHandler(ctx, k8sClient, logger, otherOwnerCm, asyncSpec,
+			otherVSHandler := volsync.NewVSHandler(ctx, k8sManager.GetClient(), logger, otherOwnerCm, asyncSpec,
 				"none", "Snapshot", false)
 
 			for i := 0; i < 2; i++ {
@@ -1571,15 +1515,10 @@ var _ = Describe("VolSync_Handler", func() {
 			}
 			Expect(k8sClient.Create(ctx, dummyPSKSecret)).To(Succeed())
 			Expect(dummyPSKSecret.GetName()).NotTo(BeEmpty())
-
-			// Make sure the secret is created to avoid any timing issues
-			Eventually(func() error {
-				return k8sClient.Get(ctx,
-					types.NamespacedName{
-						Name:      dummyPSKSecret.GetName(),
-						Namespace: dummyPSKSecret.GetNamespace(),
-					}, dummyPSKSecret)
-			}, maxWait, interval).Should(Succeed())
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      dummyPSKSecret.GetName(),
+				Namespace: dummyPSKSecret.GetNamespace(),
+			}, dummyPSKSecret)).To(Succeed())
 
 			dummyPSKSecretOtherOwner := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
@@ -1589,15 +1528,10 @@ var _ = Describe("VolSync_Handler", func() {
 			}
 			Expect(k8sClient.Create(ctx, dummyPSKSecretOtherOwner)).To(Succeed())
 			Expect(dummyPSKSecretOtherOwner.GetName()).NotTo(BeEmpty())
-
-			// Make sure the secret is created to avoid any timing issues
-			Eventually(func() error {
-				return k8sClient.Get(ctx,
-					types.NamespacedName{
-						Name:      dummyPSKSecretOtherOwner.GetName(),
-						Namespace: dummyPSKSecretOtherOwner.GetNamespace(),
-					}, dummyPSKSecretOtherOwner)
-			}, maxWait, interval).Should(Succeed())
+			Expect(k8sClient.Get(ctx, types.NamespacedName{
+				Name:      dummyPSKSecretOtherOwner.GetName(),
+				Namespace: dummyPSKSecretOtherOwner.GetNamespace(),
+			}, dummyPSKSecretOtherOwner)).To(Succeed())
 
 			capacity := resource.MustParse("50Mi")
 
@@ -1756,11 +1690,7 @@ func createSnapshot(snapshotName, namespace string) *snapv1.VolumeSnapshot {
 	}
 
 	Expect(k8sClient.Create(ctx, volSnap)).To(Succeed())
-
-	// Make sure the volume snapshot is created to avoid any timing issues
-	Eventually(func() error {
-		return k8sClient.Get(ctx, client.ObjectKeyFromObject(volSnap), volSnap)
-	}, maxWait, interval).Should(Succeed())
+	Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(volSnap), volSnap)).To(Succeed())
 
 	return volSnap
 }
@@ -1789,11 +1719,7 @@ func createDummyPVC(pvcName, namespace string, capacity resource.Quantity,
 		},
 	}
 	Expect(k8sClient.Create(ctx, dummyPVC)).To(Succeed())
-
-	// Make sure the PVC is created to avoid any timing issues
-	Eventually(func() error {
-		return k8sClient.Get(ctx, client.ObjectKeyFromObject(dummyPVC), dummyPVC)
-	}, maxWait, interval).Should(Succeed())
+	Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(dummyPVC), dummyPVC)).To(Succeed())
 
 	return dummyPVC
 }
@@ -1832,11 +1758,7 @@ func createDummyPVCAndMountingPod(pvcName, namespace string, capacity resource.Q
 	}
 
 	Expect(k8sClient.Create(ctx, pod)).To(Succeed())
-
-	Eventually(func() error {
-		// Make sure the pod has been picked up by the cache
-		return k8sClient.Get(ctx, client.ObjectKeyFromObject(pod), pod)
-	}, maxWait, interval).Should(Succeed())
+	Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(pod), pod)).To(Succeed())
 
 	prevResourceVersion := pod.ResourceVersion
 	statusUpdateRequired := false
@@ -1912,11 +1834,7 @@ func createDummyVolumeAttachmentForPVC(pvc *corev1.PersistentVolumeClaim) {
 	}
 
 	Expect(k8sClient.Create(ctx, dummyVolumeAttachment)).To(Succeed())
-
-	Eventually(func() error {
-		// Make sure the pod status update has been picked up by the cache
-		return k8sClient.Get(ctx, client.ObjectKeyFromObject(dummyVolumeAttachment), dummyVolumeAttachment)
-	}, maxWait, interval).Should(BeNil())
+	Expect(k8sClient.Get(ctx, client.ObjectKeyFromObject(dummyVolumeAttachment), dummyVolumeAttachment)).To(Succeed())
 }
 
 func cleanupNonNamespacedResources() {
