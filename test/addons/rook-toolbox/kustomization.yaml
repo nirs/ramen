@@ -8,5 +8,5 @@ resources:
 
 images:
   - name: quay.io/ceph/ceph:v19
-    newName: quay.io/egershko/ceph
-    newTag: wip-pkalever-rbd-group-snap-mirror1
+    newName: quay.ceph.io/ceph-ci/ceph
+    newTag: main
