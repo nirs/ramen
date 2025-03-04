@@ -5,6 +5,7 @@ package workloads
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -15,16 +16,28 @@ import (
 	k8stypes "k8s.io/apimachinery/pkg/types"
 )
 
+const (
+	deploymentName    = "deploy"
+	deploymentAppName = "busybox"
+	deploymentPath    = "workloads/deployment/base"
+)
+
 type Deployment struct {
-	Path     string
-	Revision string
-	AppName  string
 	Name     string
+	Revision string
 	PVCSpec  config.PVCSpec
 }
 
+func NewDeployment(revision string, pvcSpec config.PVCSpec) types.Workload {
+	return &Deployment{
+		Name:     fmt.Sprintf("%s-%s", deploymentName, pvcSpec.Name),
+		Revision: revision,
+		PVCSpec:  pvcSpec,
+	}
+}
+
 func (w Deployment) GetAppName() string {
-	return w.AppName
+	return deploymentAppName
 }
 
 func (w Deployment) GetName() string {
@@ -32,7 +45,7 @@ func (w Deployment) GetName() string {
 }
 
 func (w Deployment) GetPath() string {
-	return w.Path
+	return deploymentPath
 }
 
 func (w Deployment) GetRevision() string {
