@@ -28,12 +28,19 @@ type Cluster struct {
 	KubeconfigPath string
 }
 
+type Test struct {
+	Workload string
+	Deployer string
+	PVCSpec  string
+}
+
 type Config struct {
 	// User configurable values.
 	ChannelNamespace string
 	GitURL           string
 	Clusters         map[string]Cluster
 	PVCSpecs         []PVCSpec
+	Tests            []Test
 
 	// Generated values
 	channelName string
@@ -75,6 +82,10 @@ func ReadConfig(configFile string) error {
 		return fmt.Errorf("failed to find pvcs in configuration")
 	}
 
+	if len(config.Tests) == 0 {
+		return fmt.Errorf("failed to find tests in configuration")
+	}
+
 	config.channelName = resourceName(config.GitURL)
 
 	return nil
@@ -98,6 +109,10 @@ func GetPVCSpecs() []PVCSpec {
 
 func GetClusters() map[string]Cluster {
 	return config.Clusters
+}
+
+func GetTests() []Test {
+	return config.Tests
 }
 
 // resourceName convert a URL to conventional k8s resource name:
