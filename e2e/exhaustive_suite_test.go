@@ -9,40 +9,13 @@ import (
 	"github.com/ramendr/ramen/e2e/config"
 	"github.com/ramendr/ramen/e2e/deployers"
 	"github.com/ramendr/ramen/e2e/test"
-	"github.com/ramendr/ramen/e2e/types"
 	"github.com/ramendr/ramen/e2e/util"
 	"github.com/ramendr/ramen/e2e/workloads"
 )
 
-// Deployers = {"Subscription", "AppSet", "Imperative"}
-// Workloads = {"Deployment", "STS", "DaemonSet"}
-// Classes   = {"rbd", "cephfs"}
-
 const (
 	GITREVISION = "main"
 )
-
-var (
-	Workloads      = []types.Workload{}
-	subscription   = &deployers.Subscription{}
-	appset         = &deployers.ApplicationSet{}
-	discoveredApps = &deployers.DiscoveredApp{}
-	Deployers      = []types.Deployer{subscription, appset, discoveredApps}
-)
-
-func generateWorkloads([]types.Workload) {
-	pvcSpecs := config.GetPVCSpecs()
-	for _, pvcSpec := range pvcSpecs {
-		for _, name := range workloads.AvailableNames() {
-			deployment, err := workloads.New(name, GITREVISION, pvcSpec)
-			if err != nil {
-				panic(err)
-			}
-
-			Workloads = append(Workloads, deployment)
-		}
-	}
-}
 
 //nolint:thelper
 func Exhaustive(dt *testing.T) {
@@ -60,17 +33,30 @@ func Exhaustive(dt *testing.T) {
 		}
 	})
 
-	generateWorkloads(Workloads)
+	pvcSpecs := config.GetPVCSpecs()
 
-	for _, deployer := range Deployers {
-		for _, workload := range Workloads {
-			ctx := test.NewContext(workload, deployer, util.Ctx.Log)
-			t.Run(ctx.Name(), func(dt *testing.T) {
-				t := test.WithLog(dt, ctx.Logger())
-				t.Parallel()
-				runTestFlow(t, ctx)
-			})
+	for _, tc := range config.GetTests() {
+		pvcSpec, ok := pvcSpecs[tc.PVCSpec]
+		if !ok {
+			t.Fatalf("unknown pvcspec: %q", tc.PVCSpec)
 		}
+
+		workload, err := workloads.New(tc.Workload, GITREVISION, pvcSpec)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		deployer, err := deployers.New(tc.Deployer)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		ctx := test.NewContext(workload, deployer, util.Ctx.Log)
+		t.Run(ctx.Name(), func(dt *testing.T) {
+			t := test.WithLog(dt, ctx.Logger())
+			t.Parallel()
+			runTestFlow(t, ctx)
+		})
 	}
 }
 
