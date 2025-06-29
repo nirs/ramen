@@ -121,6 +121,8 @@ def start(profile, verbose=False, timeout=None):
     # TODO: Use --interactive=false when the bug is fixed.
     # https://github.com/kubernetes/minikube/issues/19518
 
+    args.append("--iso-url=file:///Users/nir/src/minikube/minikube-arm64-5.10.iso")
+
     _watch("start", *args, profile=profile["name"], timeout=timeout)
 
     logging.info(
