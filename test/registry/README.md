@@ -5,30 +5,13 @@ SPDX-License-Identifier: Apache-2.0
 
 # Using local registry for minikube clusters
 
-## Initial setup
+## Initial setup - Linux
 
 1. Install podman
 
    ```
    sudo dnf install podman
    ```
-
-1. Run the registry container
-
-   ```
-   podman run --name registry \
-       --publish 5000:5000 \
-       --volume registry:/var/lib/registry:Z \
-       --detach \
-       --replace \
-       registry:2
-   ```
-
-   Use `--replace` to replace an existing container, typically left
-   after reboot the host.
-
-   To run the registry as system service see
-   [systemd service](#systemd-service).
 
 1. Allow access to port 5000 in the libvirt zone
 
@@ -43,12 +26,76 @@ SPDX-License-Identifier: Apache-2.0
    sudo cp host.minikube.internal.conf /etc/containers/registries.conf.d/
    ```
 
-1. Testing the registry
+1. Run the registry container
 
    ```
-   $ curl host.minikube.internal:5000/v2/_catalog
-   {}
+   ./start
    ```
+
+   To run the registry as system service on Linux see
+   [systemd service](#systemd-service).
+
+### Systemd service
+
+To create a registry service running at boot, install the provided
+systemd units and start the service.
+
+```
+sudo cp systemd/registry.* /etc/containers/systemd/
+sudo systemctl daemon-reload
+sudo systemctl start registry.service
+```
+
+> [!NOTE]
+> The service does not need to be enabled.
+
+## Initial setup - macOS
+
+1. Install podman
+
+   ```
+   brew install podman
+   ```
+
+1. Start podman machine
+
+   ```
+   podman machine start
+   ```
+
+1. Allow podman to accept incoming connections
+
+   ```
+   version="$(podman version --format '{{.Version}}')"
+   gvproxy="/opt/homebrew/Cellar/podman/$version/libexec/podman/gvproxy"
+   sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add "$gvproxy"
+   sudo /usr/libexec/ApplicationFirewall/socketfilterfw --unblock "$gvproxy"
+   ```
+
+1. Configure podman to allow insecure local registry
+
+   ```
+   podman machine cp host.lima.internal.conf podman-machine-default:/etc/containers/registries.conf.d/
+   ```
+
+1. Restart podman machine to apply the changes
+
+   ```
+   podman machine restart
+   ```
+
+1. Run the registry container
+
+   ```
+   ./start
+   ```
+
+## Testing the registry
+
+```
+$ curl host.minikube.internal:5000/v2/_catalog
+{}
+```
 
 ## Pushing to the local registry
 
@@ -61,7 +108,7 @@ SPDX-License-Identifier: Apache-2.0
 1. Push to the local registry
 
    ```
-   podman push quay.io/nirsof/cirros:0.6.2-1 host.minikube.internal:5000/nirsof/cirros:0.6.2-1
+   podman push quay.io/nirsof/cirros:0.6.2-1 localhost:5000/nirsof/cirros:0.6.2-1
    ```
 
 ## Using images from the local registry
@@ -80,16 +127,6 @@ spec:
       url: "docker://host.minikube.internal:5000/nirsof/cirros:0.6.2-1"
 ```
 
-## Systemd service
-
-To create a registry service running at boot, install the provided
-systemd units and start the service.
-
-```
-sudo cp systemd/registry.* /etc/containers/systemd/
-sudo systemctl daemon-reload
-sudo systemctl start registry.service
-```
-
 > [!NOTE]
-> The service does not need to be enabled.
+> For macOS the registry address is `host.lima.internal:5000` instead of
+> `host.minikube.internal`.
