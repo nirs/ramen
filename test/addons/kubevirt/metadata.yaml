@@ -1,5 +1,5 @@
 version: v1.6.2
-revision: 1
+revision: 2
 caches:
 - crd
 - operator
