@@ -156,115 +156,27 @@ func prepareHooks(namespace string) []*recipe.Hook {
 	}
 }
 
-func prepareWorkflow(name string) *recipe.Workflow {
-	return &recipe.Workflow{
-		Name: name,
-		Sequence: []map[string]string{
-			{
-				"group": "rg1",
-			},
-		},
-	}
-}
-
 func prepareWorkflows(recipeSpec *config.Recipe) []*recipe.Workflow {
-	backup := prepareWorkflow("backup")
-	restore := prepareWorkflow("restore")
+	backup := &recipe.Workflow{Name: "backup"}
+	restore := &recipe.Workflow{Name: "restore"}
 
-	checkHook := map[string]string{
-		"hook": "check-hook/check-replicas",
-	}
-
-	execHook := map[string]string{
-		"hook": "exec-hook/ls",
-	}
-
-	group := map[string]string{
-		"group": "rg1",
-	}
+	checkHook := map[string]string{"hook": "check-hook/check-replicas"}
+	execHook := map[string]string{"hook": "exec-hook/ls"}
+	group := map[string]string{"group": "rg1"}
 
 	if recipeSpec.ExecHook && recipeSpec.CheckHook {
-		addCheckAndExecHooks(backup, checkHook, execHook, group)
-		addCheckAndExecHooks(restore, checkHook, execHook, group)
-
-		return []*recipe.Workflow{
-			backup,
-			restore,
-		}
+		backup.Sequence = []map[string]string{checkHook, execHook, group}
+		restore.Sequence = []map[string]string{group, checkHook, execHook}
+	} else if recipeSpec.CheckHook {
+		backup.Sequence = []map[string]string{checkHook, group}
+		restore.Sequence = []map[string]string{group, checkHook}
+	} else if recipeSpec.ExecHook {
+		backup.Sequence = []map[string]string{execHook, group}
+		restore.Sequence = []map[string]string{group, execHook}
+	} else {
+		backup.Sequence = []map[string]string{group}
+		restore.Sequence = []map[string]string{group}
 	}
 
-	if recipeSpec.CheckHook {
-		addCheckHooks(backup, checkHook, group)
-		addCheckHooks(restore, checkHook, group)
-
-		return []*recipe.Workflow{
-			backup,
-			restore,
-		}
-	}
-
-	if recipeSpec.ExecHook {
-		addExecHooks(backup, execHook, group)
-		addExecHooks(restore, execHook, group)
-	}
-
-	return []*recipe.Workflow{
-		backup,
-		restore,
-	}
-}
-
-// nolint:mnd
-func addCheckHooks(workflow *recipe.Workflow, checkHook, group map[string]string) {
-	seq := make([]map[string]string, 2)
-
-	if workflow.Name == "backup" {
-		seq[0] = checkHook
-
-		seq[1] = group
-	}
-
-	if workflow.Name == "restore" {
-		seq[0] = group
-
-		seq[1] = checkHook
-	}
-
-	workflow.Sequence = seq
-}
-
-// nolint:mnd
-func addExecHooks(workflow *recipe.Workflow, execHook, group map[string]string) {
-	seq := make([]map[string]string, 2)
-
-	if workflow.Name == "backup" {
-		seq[0] = execHook
-		seq[1] = group
-	}
-
-	if workflow.Name == "restore" {
-		seq[0] = group
-		seq[1] = execHook
-	}
-
-	workflow.Sequence = seq
-}
-
-// nolint:mnd
-func addCheckAndExecHooks(workflow *recipe.Workflow, checkHook, execHook, group map[string]string) {
-	seq := make([]map[string]string, 3)
-
-	if workflow.Name == "backup" {
-		seq[0] = checkHook
-		seq[1] = execHook
-		seq[2] = group
-	}
-
-	if workflow.Name == "restore" {
-		seq[0] = group
-		seq[1] = checkHook
-		seq[2] = execHook
-	}
-
-	workflow.Sequence = seq
+	return []*recipe.Workflow{backup, restore}
 }
