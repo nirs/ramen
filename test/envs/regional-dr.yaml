@@ -21,7 +21,7 @@ templates:
         io.containerd.cri.v1.runtime:
           device_ownership_from_security_context: true
     network: "$network"
-    cpus: 4
+    cpus: 6
     memory: "8g"
     extra_disks: 1
     disk_size: "50g"
@@ -47,7 +47,7 @@ templates:
     driver: "$vm"
     container_runtime: containerd
     network: "$network"
-    cpus: 2
+    cpus: 3
     memory: "6g"
     workers:
       - addons:
