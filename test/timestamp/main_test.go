@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-var linePrefix = regexp.MustCompile(`^\[\d{2}:\d{2}:\d{2}\.\d{3}\] `)
+var linePrefix = regexp.MustCompile(`^\[\s*\d+\.\d{3}\] `)
 
 type result struct {
 	exit   int

@@ -42,17 +42,19 @@ func main() {
 		os.Exit(127) // Standard UNIX exit code for command not found
 	}
 
+	start := time.Now()
+
 	var wg sync.WaitGroup
 	wg.Add(2)
 
 	go func() {
 		defer wg.Done()
-		processStream(stdoutPipe, os.Stdout)
+		processStream(stdoutPipe, os.Stdout, start)
 	}()
 
 	go func() {
 		defer wg.Done()
-		processStream(stderrPipe, os.Stderr)
+		processStream(stderrPipe, os.Stderr, start)
 	}()
 
 	wg.Wait()
@@ -66,13 +68,13 @@ func main() {
 	}
 }
 
-func processStream(pipe io.Reader, outputStream *os.File) {
+func processStream(pipe io.Reader, outputStream *os.File, start time.Time) {
 	reader := bufio.NewReader(pipe)
 	for {
 		line, err := reader.ReadString('\n')
 		if len(line) > 0 {
-			ts := time.Now().Format("15:04:05.000")
-			fmt.Fprintf(outputStream, "[%s] %s", ts, line)
+			elapsed := time.Since(start).Seconds()
+			fmt.Fprintf(outputStream, "[%9.3f] %s", elapsed, line)
 		}
 		if err != nil {
 			break // Reached EOF or pipe closed

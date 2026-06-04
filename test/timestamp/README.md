@@ -1,8 +1,8 @@
 # timestamp
 
-Prefix each line of `stdout` and `stderr` with a timestamp (`[HH:MM:SS.mmm]`).
-Useful for profiling commands that do not log timing themselves, such as
-`podman build` or long CI steps.
+Prefix each line of `stdout` and `stderr` with elapsed seconds since the
+command started (`[seconds.mmm]`). Useful for profiling commands that do not log
+timing themselves, such as `podman build`, `minikube start`, or long CI steps.
 
 ## Build
 
@@ -29,10 +29,10 @@ Builds `timestamp` first, then runs the tests.
 Example:
 
 ```console
-$ ./timestamp bash -c 'echo started; echo quick; sleep 1.234; echo slow'
-[17:53:43.953] started
-[17:53:43.954] quick
-[17:53:45.200] slow
+$ ./timestamp bash -c 'echo start; echo quick; sleep 1.234; echo slow'
+[    0.008] start
+[    0.008] quick
+[    1.255] slow
 ```
 
 Exit status matches the wrapped command.
@@ -40,7 +40,9 @@ Exit status matches the wrapped command.
 ## Notes
 
 Timestamps are per line (`\n`). Output without a newline is stamped when
-the process exits. Times are local wall clock with millisecond precision.
+the process exits. Elapsed time is measured from when the child process
+starts, with millisecond precision. The first line is often a few
+milliseconds in, not `0.000`, due to shell and pipe setup.
 
 The child uses pipes, not a TTY, so programs may buffer output. Timestamps
 reflect when this tool reads a line, not when the child wrote it.
