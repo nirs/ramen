@@ -9,6 +9,10 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+  # Allow manual run.
+  # (Actions -> E2E -> Run workflow)
+  workflow_dispatch:
+
 env:
   # Limit number of drenv workers.
   MAX_WORKERS: 4
