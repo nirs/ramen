@@ -1,0 +1,83 @@
+#!/bin/bash
+# SPDX-FileCopyrightText: The RamenDR authors
+# SPDX-License-Identifier: Apache-2.0
+
+# Prepare a linux VM for use as a GitHub self-hosted runner. The machine
+# must be prepared first with bootstrap-linux.
+#
+# After the runner is installed, the admin must configure it with a token
+# from GitHub and start the service using the svc.sh script in the runner
+# directory.
+
+set -eu -o pipefail
+
+RUNNER_DIR="/home/github/actions-runner"
+
+# The actions-runner requires the .NET runtime which depends on libicu.
+echo "Installing runner dependencies..."
+sudo dnf install -y libicu
+
+# Create a github user for running the actions-runner.
+if ! id -u github &>/dev/null; then
+    echo "Creating github user..."
+    sudo adduser github
+else
+    echo "User github already exists."
+fi
+
+# Add to libvirt group, required for using minikube with kvm driver.
+echo "Adding github to libvirt group..."
+sudo usermod -a -G libvirt github
+
+# Enable lingering so the github user's systemd environment persists after
+# logout. Without this, systemd destroys the user environment on logout,
+# which breaks the runner service.
+echo "Enabling lingering for github user..."
+sudo loginctl enable-linger github
+
+# Add public keys to allow admin to log in as github user.
+sudo mkdir -p /home/github/.ssh
+if [[ ! -f /home/github/.ssh/authorized_keys ]]; then
+    echo "Copying SSH authorized keys for github user..."
+    sudo cp ~/.ssh/authorized_keys /home/github/.ssh/
+else
+    echo "SSH authorized keys already exist for github user."
+fi
+sudo chown -R github:github /home/github/.ssh
+sudo chmod 0700 /home/github/.ssh
+sudo chmod 0600 /home/github/.ssh/authorized_keys
+
+# Create the actions-runner directory.
+echo "Creating actions-runner directory..."
+sudo mkdir -p "$RUNNER_DIR"
+sudo chown github:github "$RUNNER_DIR"
+
+# Allow running anything in the actions-runner directory. This is needed for
+# running the actions-runner as a systemd service, and for running scripts from
+# checked-out repositories during workflows (e.g. drenv, ramendev). We cannot
+# restrict this further since we don't control what the workflows depend on.
+echo "Configuring SELinux for actions-runner..."
+sudo semanage fcontext -a -t bin_t "${RUNNER_DIR}(/.*)?"
+sudo restorecon -Rv "$RUNNER_DIR"
+
+# Install the latest actions-runner release.
+if [[ -f "$RUNNER_DIR/run.sh" ]]; then
+    echo "Actions runner already installed."
+else
+    echo "Installing latest actions-runner..."
+    version=$(curl --fail --show-error --silent https://api.github.com/repos/actions/runner/releases/latest | jq -r .tag_name)
+    tarball="actions-runner-linux-x64-${version#v}.tar.gz"
+    url="https://github.com/actions/runner/releases/download/${version}/${tarball}"
+    echo "Downloading ${tarball}..."
+    sudo -u github curl -fL -o "${RUNNER_DIR}/${tarball}" "$url"
+    sudo -u github tar xzf "${RUNNER_DIR}/${tarball}" -C "$RUNNER_DIR"
+    echo "Installed actions-runner ${version}."
+fi
+
+echo ""
+echo "Bootstrap complete."
+echo ""
+echo "Next steps:"
+echo "  1. Visit https://github.com/RamenDR/ramen/settings/actions/runners/new?arch=x64&os=linux"
+echo "  2. Configure the runner: cd ${RUNNER_DIR} && ./config.sh --url <repo-url> --token <token>"
+echo "  3. Start the service: sudo ./svc.sh install github && sudo ./svc.sh start"
