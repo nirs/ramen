@@ -7,7 +7,15 @@ name: e2e
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types:
+    - opened
+    - synchronize
+    - reopened
+    - labeled
+
+  # Allow manual run.
+  # (Actions -> E2E -> Run workflow)
+  workflow_dispatch:
 
 env:
   # Limit number of drenv workers.
@@ -22,7 +30,11 @@ concurrency:
 jobs:
   e2e-rdr:
     runs-on: [self-hosted, e2e-rdr]
-    if: github.repository == 'RamenDR/ramen' && github.event.pull_request.author_association == 'MEMBER'
+    # Run only when 'e2e-approved' label is added, or on other PR events
+    # (opened, synchronize, reopened) if the PR already has the label.
+    if: |
+      github.event.action == 'labeled' && github.event.label.name == 'e2e-approved' ||
+      github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'e2e-approved')
 
     steps:
     - name: Checkout Repo
