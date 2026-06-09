@@ -22,7 +22,7 @@ concurrency:
 jobs:
   e2e-rdr:
     runs-on: [self-hosted, e2e-rdr]
-    if: github.repository == 'RamenDR/ramen' && github.event.pull_request.author_association == 'MEMBER'
+    if: contains(github.event.pull_request.labels.*.name, 'e2e-approved')
 
     steps:
     - name: Checkout Repo
