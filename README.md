@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: The RamenDR authors
 SPDX-License-Identifier: Apache-2.0
 -->
 
-# Ramen
+# Testing e2e-auth
 
 Ramen is an
 [open-cluster-management (OCM)](https://open-cluster-management.io/docs/concepts/architecture/)
