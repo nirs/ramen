@@ -24,7 +24,6 @@ permissions:
 jobs:
   authorize:
     runs-on: ubuntu-24.04
-    if: github.repository == 'RamenDR/ramen'
     steps:
     - name: Checkout base branch
       uses: actions/checkout@v6
