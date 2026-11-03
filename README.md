@@ -115,3 +115,8 @@ stable releases yet.
 ## Licensing
 
 Ramen is under the [Apache 2.0 license.](LICENSES/Apache-2.0.txt)
+
+## External contributor e2e workflow test
+
+This temporary change exercises the `/test e2e` pull request comment workflow
+from an external fork.
