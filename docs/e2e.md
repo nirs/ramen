@@ -31,19 +31,19 @@ finish.
 When the run starts:
 
 ```markdown
-Hey @commenter, [e2e run 7791](https://github.com/RamenDR/ramen/actions/runs/41651171375) started for 62449075ee26.
+Hey @commenter, [e2e run 7791#1](https://github.com/RamenDR/ramen/actions/runs/41651171375/attempts/1) started for 62449075ee26.
 ```
 
 When the tests pass:
 
 ```markdown
-Hey @commenter, [e2e run 7791](https://github.com/RamenDR/ramen/actions/runs/41651171375) passed for 62449075ee26.
+Hey @commenter, [e2e run 7791#1](https://github.com/RamenDR/ramen/actions/runs/41651171375/attempts/1) passed for 62449075ee26.
 ```
 
 When the tests fail:
 
 ```markdown
-Hey @commenter, [e2e run 7791](https://github.com/RamenDR/ramen/actions/runs/41651171375) failed for 62449075ee26.
+Hey @commenter, [e2e run 7791#1](https://github.com/RamenDR/ramen/actions/runs/41651171375/attempts/1) failed for 62449075ee26.
 ```
 
 ## Running End to End tests locally

@@ -38,7 +38,7 @@ env:
   MAX_WORKERS: 4
   BUILD_ID: ${{ github.run_id }}-${{ github.run_attempt }}
   CONTEXT: e2e / test
-  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}
 
 jobs:
   start:
@@ -156,6 +156,7 @@ jobs:
         JOB_STATUS: ${{ job.status }}
         HEAD_SHA: ${{ steps.head.outputs.head_sha }}
         RUN_NUMBER: ${{ github.run_number }}
+        RUN_ATTEMPT: ${{ github.run_attempt }}
       run: |
         if [ -n "$ERROR" ]; then
           body="$(printf 'Hey @%s, %s' "$AUTHOR" "$ERROR")"
@@ -163,8 +164,8 @@ jobs:
             body="$(printf '%s\n\n%s' "$body" "$RECOVERY")"
           fi
         elif [ "$JOB_STATUS" = success ]; then
-          body="$(printf 'Hey @%s, [e2e run %s](%s) started for %s.' \
-              "$AUTHOR" "$RUN_NUMBER" "$RUN_URL" "${HEAD_SHA:0:12}")"
+          body="$(printf 'Hey @%s, [e2e run %s#%s](%s) started for %s.' \
+              "$AUTHOR" "$RUN_NUMBER" "$RUN_ATTEMPT" "$RUN_URL" "${HEAD_SHA:0:12}")"
         else
           exit 0
         fi
@@ -380,6 +381,7 @@ jobs:
         AUTHOR: ${{ github.event.comment.user.login }}
         HEAD_SHA: ${{ needs.start.outputs.head_sha }}
         RUN_NUMBER: ${{ github.run_number }}
+        RUN_ATTEMPT: ${{ github.run_attempt }}
       run: |
         case "$TEST_RESULT" in
           success) verb=passed ;;
@@ -387,8 +389,8 @@ jobs:
           cancelled) verb=canceled ;;
           *) exit 0 ;;
         esac
-        body="$(printf 'Hey @%s, [e2e run %s](%s) %s for %s.' \
-            "$AUTHOR" "$RUN_NUMBER" "$RUN_URL" "$verb" "${HEAD_SHA:0:12}")"
+        body="$(printf 'Hey @%s, [e2e run %s#%s](%s) %s for %s.' \
+            "$AUTHOR" "$RUN_NUMBER" "$RUN_ATTEMPT" "$RUN_URL" "$verb" "${HEAD_SHA:0:12}")"
         echo "comment: $body"
         gh api --method POST "repos/$REPO/issues/$PR_NUMBER/comments" \
             --raw-field body="$body"
