@@ -8,7 +8,45 @@ SPDX-License-Identifier: Apache-2.0
 RamenDR end-to-end (e2e) tests validate various scenarios for regional DR using
 predefined workloads and deployment methods.
 
-## Running End to End tests
+## Running the e2e job for a pull request
+
+Add a comment to the pull request with a line that is exactly:
+
+```text
+/test e2e
+```
+
+> [!NOTE]
+> - The commenter must be listed in the [OWNERS](../OWNERS) file.
+> - Pushing a new version does not start e2e. Add a new `/test e2e` comment to
+>   start a build for the new commit.
+
+The test runs the commit that was current when the comment was added.
+
+### Comments
+
+The workflow comments on the pull request when the run starts and when the tests
+finish.
+
+When the run starts:
+
+```markdown
+Hey @commenter, [e2e run 7791#1](https://github.com/RamenDR/ramen/actions/runs/41651171375/attempts/1) started for 62449075ee26.
+```
+
+When the tests pass:
+
+```markdown
+Hey @commenter, [e2e run 7791#1](https://github.com/RamenDR/ramen/actions/runs/41651171375/attempts/1) passed for 62449075ee26.
+```
+
+When the tests fail:
+
+```markdown
+Hey @commenter, [e2e run 7791#1](https://github.com/RamenDR/ramen/actions/runs/41651171375/attempts/1) failed for 62449075ee26.
+```
+
+## Running End to End tests locally
 
 > [!IMPORTANT]
 > All commands must be ran from the e2e directory.
