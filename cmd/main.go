@@ -289,6 +289,7 @@ func setupReconcilersHub(mgr ctrl.Manager, ramenConfig *ramendrv1alpha1.RamenCon
 	}
 }
 
+// This change requires e2e run.
 func main() {
 	if os.Getenv("PVC_INIT") == "true" {
 		runPVCInit()
