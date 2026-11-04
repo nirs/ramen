@@ -115,3 +115,8 @@ stable releases yet.
 ## Licensing
 
 Ramen is under the [Apache 2.0 license.](LICENSES/Apache-2.0.txt)
+
+## Skip e2e
+
+This change does not require e2e run. A skipped "e2e / test" status will be
+added automatically, allowing merge without running e2e.
