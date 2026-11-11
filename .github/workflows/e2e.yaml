@@ -448,9 +448,28 @@ jobs:
         # A changed file that matches any pattern does not require e2e.
         # Each pattern is matched against the full path.
         SKIP = [
+            # Documentation.
             r"^docs/.*",
             r"^website/.*",
+            r"^examples/.*",
             r"^.*\.md",
+            # Repository metadata. Read from the default branch, so a
+            # change in a pull request cannot affect e2e.
+            r"^CODEOWNERS$",
+            r"^DCO$",
+            r"^LICENSE$",
+            r"^LICENSES/.*",
+            r"^OWNERS$",
+            # Unit tests. None of them runs during e2e.
+            r"^internal/.*_test\.go$",
+            # Tests of e2e helpers. The e2e tests in the e2e directory
+            # (main_test.go, dr_test.go, validation_test.go) are the
+            # tests we run, so they are not matched here.
+            r"^e2e/.*/.*_test\.go$",
+            # Workflows. e2e runs e2e.yaml from the default branch, so a
+            # change in a pull request cannot affect it. Other workflows
+            # are not part of e2e.
+            r"^\.github/workflows/.*\.ya?ml$",
         ]
 
         def gh(*args):
