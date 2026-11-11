@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: The RamenDR authors
 // SPDX-License-Identifier: Apache-2.0
 
+
+// smoke test: unit test
 package util_test
 
 import (

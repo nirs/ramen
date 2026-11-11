@@ -46,3 +46,4 @@ tests:
 #     kubeconfig: dr1/config
 #   c2:
 #     kubeconfig: dr2/config
+# smoke test: unused sample config

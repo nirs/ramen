@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: The RamenDR authors
 // SPDX-License-Identifier: Apache-2.0
 
+
+// smoke test: e2e helper test
 package helpers_test
 
 import (

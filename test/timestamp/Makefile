@@ -11,3 +11,4 @@ timestamp:
 
 test: timestamp
 	go test -v .
+# smoke test: standalone tool

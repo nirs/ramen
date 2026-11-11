@@ -231,3 +231,4 @@ formatters:
         - standard
         - default
         - localmodule
+# smoke test: lint configuration
