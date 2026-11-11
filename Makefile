@@ -1,3 +1,4 @@
+# smoke test: this file must require e2e
 # SPDX-FileCopyrightText: The RamenDR authors
 # SPDX-License-Identifier: Apache-2.0
 
